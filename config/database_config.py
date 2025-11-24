@@ -2,7 +2,6 @@
 from contextlib import contextmanager
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
 
 # mysql数据库的连接URL
 MYSQL_DATABASE_URL = "mysql+pymysql://root:123456@localhost:33306/shuyx_db"
@@ -13,9 +12,6 @@ myEngine = create_engine(MYSQL_DATABASE_URL,
     pool_timeout=30,        # 池中没有线程最多等待的时间，否则报错
     echo=False              # 是否在控制台打印相关语句等
     )
-
-# 创建基类myBase
-myBase = declarative_base()
 
 # 创建会话对象mySession
 mySession = sessionmaker(autocommit=False, autoflush=False, bind=myEngine)
