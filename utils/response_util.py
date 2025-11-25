@@ -5,182 +5,146 @@ from typing import Any, Dict, Optional
 from pydantic import BaseModel
 from datetime import datetime
 
+
 class ResponseUtil:
     """
     响应工具类
+    提供统一的响应格式和便捷的响应方法
     """
 
     @classmethod
-    def success(cls, msg: str = '操作成功', data: Optional[Any] = None, rows: Optional[Any] = None,
-                dict_content: Optional[Dict] = None, model_content: Optional[BaseModel] = None) -> Response:
+    def _create_response_dict(cls, code: int, msg: str, success: bool = True,
+                              data: Optional[Any] = None, **kwargs) -> Dict[str, Any]:
         """
-        成功响应方法
-        :param msg: 可选，自定义成功响应信息
-        :param data: 可选，成功响应结果中属性为data的值
-        :param rows: 可选，成功响应结果中属性为rows的值
-        :param dict_content: 可选，dict类型，成功响应结果中自定义属性的值
-        :param model_content: 可选，BaseModel类型，成功响应结果中自定义属性的值
-        :return: 成功响应结果
+        创建响应字典
+
+        Args:
+            code: 响应码
+            msg: 响应消息
+            success: 是否成功
+            data: 响应数据
+            **kwargs: 其他响应字段
+
+        Returns:
+            Dict[str, Any]: 响应字典
         """
         result = {
-            'code': 200,
-            'msg': msg
+            'code': code,
+            'msg': msg,
+            'success': success,
+            'time': datetime.now()
         }
 
         if data is not None:
             result['data'] = data
-        if rows is not None:
-            result['rows'] = rows
-        if dict_content is not None:
-            result.update(dict_content)
-        if model_content is not None:
-            result.update(model_content.model_dump(by_alias=True))
 
-        result.update({'success': True, 'time': datetime.now()})
+        result.update(kwargs)
+        return result
 
-        return JSONResponse(
+    @classmethod
+    def success(cls, msg: str = '操作成功', data: Optional[Any] = None,
+                as_dict: bool = False, **kwargs) -> Any:
+        """
+        成功响应
+
+        Args:
+            msg: 响应消息
+            data: 响应数据
+            as_dict: 是否返回字典而不是Response对象
+            **kwargs: 其他响应字段
+
+        Returns:
+            Union[Dict, Response]: 响应字典或Response对象
+        """
+        result = cls._create_response_dict(200, msg, True, data, **kwargs)
+        return result if as_dict else JSONResponse(
             status_code=status.HTTP_200_OK,
             content=jsonable_encoder(result)
         )
 
     @classmethod
-    def failure(cls, msg: str = '操作失败', data: Optional[Any] = None, rows: Optional[Any] = None,
-                dict_content: Optional[Dict] = None, model_content: Optional[BaseModel] = None) -> Response:
+    def failure(cls, msg: str = '操作失败', data: Optional[Any] = None,
+                as_dict: bool = False, code: int = 601, **kwargs) -> Any:
         """
-        失败响应方法
-        :param msg: 可选，自定义失败响应信息
-        :param data: 可选，失败响应结果中属性为data的值
-        :param rows: 可选，失败响应结果中属性为rows的值
-        :param dict_content: 可选，dict类型，失败响应结果中自定义属性的值
-        :param model_content: 可选，BaseModel类型，失败响应结果中自定义属性的值
-        :return: 失败响应结果
+        失败响应
+
+        Args:
+            msg: 响应消息
+            data: 响应数据
+            as_dict: 是否返回字典而不是Response对象
+            code: 响应码，默认601
+            **kwargs: 其他响应字段
+
+        Returns:
+            Union[Dict, Response]: 响应字典或Response对象
         """
-        result = {
-            'code': 601,
-            'msg': msg
-        }
-
-        if data is not None:
-            result['data'] = data
-        if rows is not None:
-            result['rows'] = rows
-        if dict_content is not None:
-            result.update(dict_content)
-        if model_content is not None:
-            result.update(model_content.model_dump(by_alias=True))
-
-        result.update({'success': False, 'time': datetime.now()})
-
-        return JSONResponse(
+        result = cls._create_response_dict(code, msg, False, data, **kwargs)
+        return result if as_dict else JSONResponse(
             status_code=status.HTTP_200_OK,
             content=jsonable_encoder(result)
         )
 
     @classmethod
-    def unauthorized(cls, msg: str = '登录信息已过期，访问系统资源失败', data: Optional[Any] = None, rows: Optional[Any] = None,
-                     dict_content: Optional[Dict] = None, model_content: Optional[BaseModel] = None) -> Response:
+    def error(cls, msg: str = '接口异常', data: Optional[Any] = None,
+              as_dict: bool = False, **kwargs) -> Any:
         """
-        未认证响应方法
-        :param msg: 可选，自定义未认证响应信息
-        :param data: 可选，未认证响应结果中属性为data的值
-        :param rows: 可选，未认证响应结果中属性为rows的值
-        :param dict_content: 可选，dict类型，未认证响应结果中自定义属性的值
-        :param model_content: 可选，BaseModel类型，未认证响应结果中自定义属性的值
-        :return: 未认证响应结果
+        错误响应
+
+        Args:
+            msg: 响应消息
+            data: 响应数据
+            as_dict: 是否返回字典而不是Response对象
+            **kwargs: 其他响应字段
+
+        Returns:
+            Union[Dict, Response]: 响应字典或Response对象
         """
-        result = {
-            'code': 401,
-            'msg': msg
-        }
-
-        if data is not None:
-            result['data'] = data
-        if rows is not None:
-            result['rows'] = rows
-        if dict_content is not None:
-            result.update(dict_content)
-        if model_content is not None:
-            result.update(model_content.model_dump(by_alias=True))
-
-        result.update({'success': False, 'time': datetime.now()})
-
-        return JSONResponse(
-            status_code=status.HTTP_200_OK,
-            content=jsonable_encoder(result)
-        )
+        return cls.failure(msg, data, as_dict, 500, **kwargs)
 
     @classmethod
-    def forbidden(cls, msg: str = '该用户无此接口权限', data: Optional[Any] = None, rows: Optional[Any] = None,
-                  dict_content: Optional[Dict] = None, model_content: Optional[BaseModel] = None) -> Response:
+    def unauthorized(cls, msg: str = '登录信息已过期，访问系统资源失败',
+                     data: Optional[Any] = None, as_dict: bool = False, **kwargs) -> Any:
         """
-        未认证响应方法
-        :param msg: 可选，自定义未认证响应信息
-        :param data: 可选，未认证响应结果中属性为data的值
-        :param rows: 可选，未认证响应结果中属性为rows的值
-        :param dict_content: 可选，dict类型，未认证响应结果中自定义属性的值
-        :param model_content: 可选，BaseModel类型，未认证响应结果中自定义属性的值
-        :return: 未认证响应结果
+        未授权响应
+
+        Args:
+            msg: 响应消息
+            data: 响应数据
+            as_dict: 是否返回字典而不是Response对象
+            **kwargs: 其他响应字段
+
+        Returns:
+            Union[Dict, Response]: 响应字典或Response对象
         """
-        result = {
-            'code': 403,
-            'msg': msg
-        }
-
-        if data is not None:
-            result['data'] = data
-        if rows is not None:
-            result['rows'] = rows
-        if dict_content is not None:
-            result.update(dict_content)
-        if model_content is not None:
-            result.update(model_content.model_dump(by_alias=True))
-
-        result.update({'success': False, 'time': datetime.now()})
-
-        return JSONResponse(
-            status_code=status.HTTP_200_OK,
-            content=jsonable_encoder(result)
-        )
+        return cls.failure(msg, data, as_dict, 401, **kwargs)
 
     @classmethod
-    def error(cls, msg: str = '接口异常', data: Optional[Any] = None, rows: Optional[Any] = None,
-              dict_content: Optional[Dict] = None, model_content: Optional[BaseModel] = None) -> Response:
+    def forbidden(cls, msg: str = '该用户无此接口权限',
+                  data: Optional[Any] = None, as_dict: bool = False, **kwargs) -> Any:
         """
-        错误响应方法
-        :param msg: 可选，自定义错误响应信息
-        :param data: 可选，错误响应结果中属性为data的值
-        :param rows: 可选，错误响应结果中属性为rows的值
-        :param dict_content: 可选，dict类型，错误响应结果中自定义属性的值
-        :param model_content: 可选，BaseModel类型，错误响应结果中自定义属性的值
-        :return: 错误响应结果
+        禁止访问响应
+
+        Args:
+            msg: 响应消息
+            data: 响应数据
+            as_dict: 是否返回字典而不是Response对象
+            **kwargs: 其他响应字段
+
+        Returns:
+            Union[Dict, Response]: 响应字典或Response对象
         """
-        result = {
-            'code': 500,
-            'msg': msg
-        }
-
-        if data is not None:
-            result['data'] = data
-        if rows is not None:
-            result['rows'] = rows
-        if dict_content is not None:
-            result.update(dict_content)
-        if model_content is not None:
-            result.update(model_content.model_dump(by_alias=True))
-
-        result.update({'success': False, 'time': datetime.now()})
-
-        return JSONResponse(
-            status_code=status.HTTP_200_OK,
-            content=jsonable_encoder(result)
-        )
+        return cls.failure(msg, data, as_dict, 403, **kwargs)
 
     @classmethod
-    def streaming(cls, *, data: Any = None):
+    def streaming(cls, data: Any = None) -> StreamingResponse:
         """
-        流式响应方法
-        :param data: 流式传输的内容
-        :return: 流式响应结果
+        流式响应
+
+        Args:
+            data: 流式传输的内容
+
+        Returns:
+            StreamingResponse: 流式响应对象
         """
         return StreamingResponse(
             status_code=status.HTTP_200_OK,
