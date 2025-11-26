@@ -5,8 +5,7 @@ from ..model.mp_question_model import MpQuestionModel
 
 class MpQuestionService(BaseService[MpQuestionModel]):
     """
-    服务类，继承自通用服务基类
-    提供相关的业务逻辑处理
+    继承自通用服务基类  提供相关的业务逻辑处理
     """
 
     def __init__(self):

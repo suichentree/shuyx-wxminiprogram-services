@@ -9,7 +9,6 @@ from sqlalchemy.ext.declarative import DeclarativeMeta
 ModelType = TypeVar('ModelType', bound=DeclarativeMeta)
 ServiceType = TypeVar('ServiceType')
 
-
 class BaseController(Generic[ModelType, ServiceType]):
     """
     基础控制器类

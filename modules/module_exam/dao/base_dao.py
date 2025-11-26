@@ -8,7 +8,6 @@ from config.database_config import session_maker
 # 定义模型类型变量
 ModelType = TypeVar("ModelType", bound=DeclarativeMeta)
 
-
 class BaseDao(Generic[ModelType]):
     """
     基础数据访问对象类

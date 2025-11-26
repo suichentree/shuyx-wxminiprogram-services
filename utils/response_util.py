@@ -2,9 +2,7 @@ from fastapi import status
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.encoders import jsonable_encoder
 from typing import Any, Dict, Optional
-from pydantic import BaseModel
 from datetime import datetime
-
 
 class ResponseUtil:
     """
