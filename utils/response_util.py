@@ -1,150 +1,33 @@
-from fastapi import status
-from fastapi.responses import JSONResponse, Response, StreamingResponse
-from fastapi.encoders import jsonable_encoder
-from typing import Any, Dict, Optional
-from datetime import datetime
+from pydantic import BaseModel
+from typing import Generic, TypeVar, Optional
 
+# 定义一个泛型类型变量
+T = TypeVar('T')
+
+# 定义 Pydantic模型类 ResponseModel。该类可以接受任意类型的泛型参数T，用于表示响应数据的类型。
+class ResponseModel(BaseModel, Generic[T]):
+    # 响应状态码，默认200
+    code: int = 200
+    # 响应消息，默认"success"
+    message: str = "success"
+    # 响应数据，类型为泛型T，可选
+    data: Optional[T] = None
+
+# 定义响应工具类 ResponseUtil。该类提供各个静态方法，用于创建成功和失败的响应对象。
 class ResponseUtil:
-    """
-    响应工具类
-    提供统一的响应格式和便捷的响应方法
-    """
+    # 定义success方法，用于创建成功的响应对象,默认状态码200，消息"success"
+    @staticmethod
+    def success(code=200,message="success",data=None):
+        return ResponseModel(code=code,message=message,data=data)
 
-    @classmethod
-    def _create_response_dict(cls, code: int, msg: str, success: bool = True,
-                              data: Optional[Any] = None, **kwargs) -> Dict[str, Any]:
-        """
-        创建响应字典
+    # 定义error方法，用于创建失败的响应对象，默认状态码500，消息"error"
+    @staticmethod
+    def error(code=500,message="error",data=None):
+        return ResponseModel(code=code,message=message,data=data)
 
-        Args:
-            code: 响应码
-            msg: 响应消息
-            success: 是否成功
-            data: 响应数据
-            **kwargs: 其他响应字段
 
-        Returns:
-            Dict[str, Any]: 响应字典
-        """
-        result = {
-            'code': code,
-            'msg': msg,
-            'success': success,
-            'time': datetime.now()
-        }
-
-        if data is not None:
-            result['data'] = data
-
-        result.update(kwargs)
-        return result
-
-    @classmethod
-    def success(cls, msg: str = '操作成功', data: Optional[Any] = None,
-                as_dict: bool = False, **kwargs) -> Any:
-        """
-        成功响应
-
-        Args:
-            msg: 响应消息
-            data: 响应数据
-            as_dict: 是否返回字典而不是Response对象
-            **kwargs: 其他响应字段
-
-        Returns:
-            Union[Dict, Response]: 响应字典或Response对象
-        """
-        result = cls._create_response_dict(200, msg, True, data, **kwargs)
-        return result if as_dict else JSONResponse(
-            status_code=status.HTTP_200_OK,
-            content=jsonable_encoder(result)
-        )
-
-    @classmethod
-    def failure(cls, msg: str = '操作失败', data: Optional[Any] = None,
-                as_dict: bool = False, code: int = 601, **kwargs) -> Any:
-        """
-        失败响应
-
-        Args:
-            msg: 响应消息
-            data: 响应数据
-            as_dict: 是否返回字典而不是Response对象
-            code: 响应码，默认601
-            **kwargs: 其他响应字段
-
-        Returns:
-            Union[Dict, Response]: 响应字典或Response对象
-        """
-        result = cls._create_response_dict(code, msg, False, data, **kwargs)
-        return result if as_dict else JSONResponse(
-            status_code=status.HTTP_200_OK,
-            content=jsonable_encoder(result)
-        )
-
-    @classmethod
-    def error(cls, msg: str = '接口异常', data: Optional[Any] = None,
-              as_dict: bool = False, **kwargs) -> Any:
-        """
-        错误响应
-
-        Args:
-            msg: 响应消息
-            data: 响应数据
-            as_dict: 是否返回字典而不是Response对象
-            **kwargs: 其他响应字段
-
-        Returns:
-            Union[Dict, Response]: 响应字典或Response对象
-        """
-        return cls.failure(msg, data, as_dict, 500, **kwargs)
-
-    @classmethod
-    def unauthorized(cls, msg: str = '登录信息已过期，访问系统资源失败',
-                     data: Optional[Any] = None, as_dict: bool = False, **kwargs) -> Any:
-        """
-        未授权响应
-
-        Args:
-            msg: 响应消息
-            data: 响应数据
-            as_dict: 是否返回字典而不是Response对象
-            **kwargs: 其他响应字段
-
-        Returns:
-            Union[Dict, Response]: 响应字典或Response对象
-        """
-        return cls.failure(msg, data, as_dict, 401, **kwargs)
-
-    @classmethod
-    def forbidden(cls, msg: str = '该用户无此接口权限',
-                  data: Optional[Any] = None, as_dict: bool = False, **kwargs) -> Any:
-        """
-        禁止访问响应
-
-        Args:
-            msg: 响应消息
-            data: 响应数据
-            as_dict: 是否返回字典而不是Response对象
-            **kwargs: 其他响应字段
-
-        Returns:
-            Union[Dict, Response]: 响应字典或Response对象
-        """
-        return cls.failure(msg, data, as_dict, 403, **kwargs)
-
-    @classmethod
-    def streaming(cls, data: Any = None) -> StreamingResponse:
-        """
-        流式响应
-
-        Args:
-            data: 流式传输的内容
-
-        Returns:
-            StreamingResponse: 流式响应对象
-        """
-        return StreamingResponse(
-            status_code=status.HTTP_200_OK,
-            content=data
-        )
+# 使用示例
+if __name__ == "__main__":
+    items = [{"id": 1, "name": "item1"}]
+    print(type(ResponseUtil.success(data=items)))
+    print(ResponseUtil.success(data=items))

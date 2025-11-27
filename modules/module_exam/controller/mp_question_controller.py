@@ -12,10 +12,12 @@ mpQuestionService = MpQuestionService()
 @router.get("/test")
 async def test(page_size:int,page_num:int):
     logger.info(f'/mp/question/test, page_size = {page_size} page_num = {page_num}')
-    return {
-        page_num:page_num,
-        page_size:page_size
-    }
+
+    return ResponseUtil.success(data={
+        "page_num":page_num,
+        "page_size":page_size
+    })
+
 
 @router.get("/get_page_list")
 @handle_exceptions("分页获取题目列表", "获取题目列表失败")
