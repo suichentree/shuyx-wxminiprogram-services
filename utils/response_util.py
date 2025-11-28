@@ -25,6 +25,11 @@ class ResponseUtil:
     def error(code=500,message="error",data=None):
         return ResponseModel(code=code,message=message,data=data)
 
+    # 定义exception方法，用于创建异常的响应对象，默认状态码400，消息"exception"
+    @staticmethod
+    def exception(code=400,message="exception",data=None):
+        return ResponseModel(code=code,message=message,data=data)
+
 
 # 使用示例
 if __name__ == "__main__":
