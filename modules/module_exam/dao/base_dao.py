@@ -1,6 +1,5 @@
 from typing import List, Optional, Generic, TypeVar, Type, Dict, Any
 from sqlalchemy.ext.declarative import DeclarativeMeta
-from sqlalchemy import and_, or_
 
 # 导入数据库会话工厂
 from config.database_config import session_maker
@@ -36,7 +35,12 @@ class BaseDao(Generic[ModelType]):
         """
         with session_maker() as db_session:
             offset_value = (page_num - 1) * page_size
-            return db_session.query(self.model).offset(offset_value).limit(page_size).all()
+            items = db_session.query(self.model).offset(offset_value).limit(page_size).all()
+            # 使用 SQLAlchemy-Serializer 序列化列表
+            serialized_items = [item.to_dict() for item in items]
+
+            return serialized_items
+
 
     def get_total(self) -> int:
         """
