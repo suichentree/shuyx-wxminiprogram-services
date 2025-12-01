@@ -2,8 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-
-
+from starlette.middleware.gzip import GZipMiddleware
 
 # 创建FastAPI应用实例
 app = FastAPI(
@@ -12,14 +11,29 @@ app = FastAPI(
     version="1.0.1"
 )
 
-# 配置CORS中间件
+# 全局异常处理中间件
+from middlewares.exception_middleware import ExceptionMiddleware
+app.middleware("http")(ExceptionMiddleware)
+# 认证中间件
+from middlewares.auth_middleware import AuthMiddleware
+app.middleware("http")(AuthMiddleware)
+# 日志中间件
+from middlewares.logger_middleware import LoggerMiddleware
+app.middleware("http")(LoggerMiddleware)
+
+# 添加 GZip 中间件，压缩大于 2000 字节的响应
+# app.add_middleware(GZipMiddleware, minimum_size=2000)
+
+# 注册CORS中间件
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # 在生产环境中应该设置具体的域名
+    allow_origins=["*","http://localhost:39666", "http://127.0.0.1:39666"], # 测试环境中允许所有来源，生产环境中请指定具体来源
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["*"],  # 允许所有HTTP方法
+    allow_headers=["*"],  # 允许所有请求头
 )
+
+
 
 
 # 导入控制器路由
@@ -28,12 +42,11 @@ from modules.module_exam.controller.mp_question_controller import router as mp_q
 app.include_router(mp_question_router)
 
 
-# 测试接口
+# 测试运行接口
 @app.get("/")
 async def root():
     """根路径接口"""
     return {"message": "Hello World , 服务运行正常", "version": "1.0.0"}
-
 
 if __name__ == "__main__":
     uvicorn.run(

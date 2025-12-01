@@ -2,7 +2,6 @@ from fastapi import APIRouter
 from config.log_config import logger
 from modules.module_exam.service.mp_question_service import MpQuestionService
 from utils.response_util import ResponseUtil
-from utils.exception_util import ExceptionUtil
 
 # 创建路由实例
 router = APIRouter(prefix='/mp/question', tags=['mp_question接口'])
@@ -12,7 +11,8 @@ mpQuestionService = MpQuestionService()
 @router.get("/testexception")
 async def testexception():
     logger.info(f'/mp/question/testexception')
-    raise ExceptionUtil(code=400, message="余额不足")
+    raise Exception("测试异常11111")
+
 
 @router.get("/get_page_list")
 async def get_page_list(page_size:int,page_num:int):
