@@ -16,8 +16,6 @@ class BaseDao(Generic[ModelType]):
     def __init__(self, model: Type[ModelType]):
         """
         初始化数据访问对象
-
-        Args:
             model: SQLAlchemy模型类
         """
         self.model = model
@@ -25,29 +23,20 @@ class BaseDao(Generic[ModelType]):
     def get_page_list(self, page_size: int, page_num: int) -> List[ModelType]:
         """
         获取分页列表
-
-        Args:
             page_size: 每页大小
             page_num: 页码
-
-        Returns:
-            List[ModelType]: 模型实例列表
         """
         with session_maker() as db_session:
             offset_value = (page_num - 1) * page_size
-            items = db_session.query(self.model).offset(offset_value).limit(page_size).all()
-            # 使用 SQLAlchemy-Serializer 序列化列表
-            serialized_items = [item.to_dict() for item in items]
-
-            return serialized_items
-
+            record = db_session.query(self.model).offset(offset_value).limit(page_size).all()
+            # 使用 SQLAlchemy-Serializer 序列化数据
+            result = [item.to_dict() for item in record]
+            # 返回序列化后的列表数据
+            return result
 
     def get_total(self) -> int:
         """
         获取记录总数
-
-        Returns:
-            int: 记录总数
         """
         with session_maker() as db_session:
             return db_session.query(self.model).count()
@@ -55,25 +44,18 @@ class BaseDao(Generic[ModelType]):
     def get_by_id(self, id: int) -> Optional[ModelType]:
         """
         根据ID获取单条记录
-
-        Args:
             id: 记录ID
-
-        Returns:
-            Optional[ModelType]: 找到的模型实例，未找到则返回None
         """
         with session_maker() as db_session:
-            return db_session.query(self.model).filter(self.model.id == id).first()
+            record = db_session.query(self.model).filter(self.model.id == id).first()
+            # 使用 SQLAlchemy-Serializer 序列化数据
+            result = record.to_dict() if record else None
+            return result
 
     def get_list_by_filters(self, filters: Optional[Dict[str, Any]] = None) -> List[ModelType]:
         """
         根据条件查询列表
-
-        Args:
             filters: 查询条件字典
-
-        Returns:
-            List[ModelType]: 符合条件的模型实例列表
         """
         with session_maker() as db_session:
             query = db_session.query(self.model)
@@ -84,18 +66,16 @@ class BaseDao(Generic[ModelType]):
                     if hasattr(self.model, field) and value is not None:
                         query = query.filter(getattr(self.model, field) == value)
 
-            return query.all()
+            record = query.all()
+            # 使用 SQLAlchemy-Serializer 序列化数据
+            result = record.to_dict() if record else None
+            return result
 
     def update_by_id(self, id: int, data: Dict[str, Any]) -> bool:
         """
         根据ID更新信息
-
-        Args:
             id: 要更新的记录ID
             data: 更新数据字典
-
-        Returns:
-            bool: 更新是否成功
         """
         with session_maker() as db_session:
             # 过滤出模型中存在的字段
@@ -105,32 +85,24 @@ class BaseDao(Generic[ModelType]):
             if not update_data:
                 return True  # 没有需要更新的字段，视为成功
 
-            res = db_session.query(self.model).filter(self.model.id == id).update(update_data)
-            return res > 0
+            affected_rows = db_session.query(self.model).filter(self.model.id == id).update(update_data)
+            db_session.commit()  # 显式提交事务
+            return affected_rows > 0
 
     def delete_by_id(self, id: int) -> bool:
         """
         根据ID删除记录
-
-        Args:
             id: 要删除的记录ID
-
-        Returns:
-            bool: 删除是否成功
         """
         with session_maker() as db_session:
-            res = db_session.query(self.model).filter(self.model.id == id).delete()
-            return res > 0
+            affected_rows = db_session.query(self.model).filter(self.model.id == id).delete()
+            db_session.commit()  # 显式提交事务
+            return affected_rows > 0
 
-    def add(self, data: Dict[str, Any]) -> ModelType:
+    def add(self, data: Dict[str, Any]) -> Optional[ModelType]:
         """
         添加新记录
-
-        Args:
             data: 添加数据字典
-
-        Returns:
-            ModelType: 添加后的模型实例（包含生成的ID）
         """
         with session_maker() as db_session:
             # 过滤出模型中存在的字段
@@ -139,18 +111,15 @@ class BaseDao(Generic[ModelType]):
 
             instance = self.model(**model_data)
             db_session.add(instance)
-            db_session.flush()  # 获取新生成的ID但不提交事务
-            return instance
+            db_session.flush()  # 获取新生成的ID
+            db_session.commit()  # 显式提交事务
+            # 返回序列化后的数据
+            return instance.to_dict()
 
     def get_one_by_filters(self, filters: Dict[str, Any]) -> Optional[ModelType]:
         """
         根据条件获取单条记录
-
-        Args:
             filters: 查询条件字典
-
-        Returns:
-            Optional[ModelType]: 找到的模型实例，未找到则返回None
         """
         with session_maker() as db_session:
             query = db_session.query(self.model)
@@ -159,4 +128,9 @@ class BaseDao(Generic[ModelType]):
                 if hasattr(self.model, field) and value is not None:
                     query = query.filter(getattr(self.model, field) == value)
 
-            return query.first()
+            # 执行查询并获取第一条记录
+            record = query.first()
+            # 使用 SQLAlchemy-Serializer 序列化数据
+            result = record.to_dict() if record else None
+            # 返回序列化后的数据
+            return result

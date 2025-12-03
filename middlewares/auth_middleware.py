@@ -12,7 +12,6 @@ async def AuthMiddleware(request: Request, call_next: Callable):
     # 测试路径前缀（支持通配符效果）
     test_path_prefixes = [
         "/mp/",  # 匹配所有以 /test/ 开头的路径
-        "/api/test/"  # 匹配所有以 /api/test/ 开头的路径
     ]
 
     # 检查是否是精确匹配的路径

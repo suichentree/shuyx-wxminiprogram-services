@@ -14,7 +14,6 @@ class BaseService(Generic[ModelType]):
     def __init__(self, dao_instance):
         """
         初始化服务实例
-
         Args:
             dao_instance: DAO实例，处理数据库操作
         """
@@ -23,15 +22,11 @@ class BaseService(Generic[ModelType]):
     def get_page_list(self, page_num: int = 1, page_size: int = 10) -> Dict[str, Any]:
         """
         获取分页数据
-
         Args:
             page_num: 页码，默认1
             page_size: 每页大小，默认10
-
-        Returns:
-            Dict[str, Any]: 包含分页数据的字典
         """
-        # 调用DAO层获取数据
+        # 调用DAO层获取数据（已序列化）
         items = self.dao.get_page_list(page_size, page_num)
         total = self.dao.get_total()
 
@@ -43,7 +38,7 @@ class BaseService(Generic[ModelType]):
             "page_size": page_size
         }
 
-    def get_by_id(self, id: int) -> Optional[ModelType]:
+    def get_by_id(self, id: int) -> Optional[Dict[str, Any]]:
         """
         根据ID获取详情
 
@@ -51,7 +46,7 @@ class BaseService(Generic[ModelType]):
             id: 记录ID
 
         Returns:
-            Optional[ModelType]: 找到的模型实例，未找到则返回None
+            Optional[Dict[str, Any]]: 找到则返回序列化数据，未找到则返回None
         """
         return self.dao.get_by_id(id)
 
@@ -65,7 +60,7 @@ class BaseService(Generic[ModelType]):
         Returns:
             Dict[str, Any]: 添加结果
         """
-        # 添加到数据库
+        # 添加到数据库（返回序列化数据）
         new_item = self.dao.add(data)
 
         # 返回结果
@@ -92,12 +87,11 @@ class BaseService(Generic[ModelType]):
 
         # 更新记录
         success = self.dao.update_by_id(id, data)
-
         # 获取更新后的记录
         updated_item = self.dao.get_by_id(id) if success else None
 
         return {
-            "success": success,
+            "status": success,
             "data": updated_item,
             "message": "更新成功" if success else "更新失败"
         }
@@ -125,7 +119,7 @@ class BaseService(Generic[ModelType]):
             "message": "删除成功" if success else "删除失败"
         }
 
-    def get_list_by_filters(self, filters: Optional[Dict[str, Any]] = None) -> List[ModelType]:
+    def get_list_by_filters(self, filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """
         根据条件获取列表
 
@@ -133,11 +127,11 @@ class BaseService(Generic[ModelType]):
             filters: 查询条件字典
 
         Returns:
-            List[ModelType]: 符合条件的模型实例列表
+            List[Dict[str, Any]]: 符合条件的序列化数据列表
         """
         return self.dao.get_list_by_filters(filters)
 
-    def get_one_by_filters(self, filters: Dict[str, Any]) -> Optional[ModelType]:
+    def get_one_by_filters(self, filters: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """
         根据条件获取单条记录
 
@@ -145,6 +139,6 @@ class BaseService(Generic[ModelType]):
             filters: 查询条件字典
 
         Returns:
-            Optional[ModelType]: 找到的模型实例，未找到则返回None
+            Optional[Dict[str, Any]]: 找到的序列化数据，未找到则返回None
         """
         return self.dao.get_one_by_filters(filters)
