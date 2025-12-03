@@ -1,0 +1,33 @@
+from fastapi import APIRouter, Body
+from config.log_config import logger
+from utils.response_util import ResponseUtil
+from utils.jwt_util import createToken
+import time
+
+# 创建路由实例
+router = APIRouter(prefix='/mp/common', tags=['common接口'])
+
+# JWT配置
+SECRET_KEY = "your_secret_key_here"
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+"""
+获取token接口
+"""
+@router.get("/api/applet/common/token")
+def get_token():
+    logger.info("/api/applet/common/token,获取token")
+
+    # 创建token载荷
+    payload = {
+        "userName": "shu-yx",
+        "passWord": "123456",
+    }
+    # 生成JWT token
+    token = createToken(payload)
+
+    # 返回结果
+    response_data = payload
+    response_data["token"] = token
+    return ResponseUtil.success(data=response_data)
