@@ -52,22 +52,26 @@ class BaseService(Generic[ModelType]):
 
     def add(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        添加记录
-
+        添加记录到数据库
         Args:
             data: 要添加的数据字典
-
-        Returns:
-            Dict[str, Any]: 添加结果
         """
-        # 添加到数据库（返回序列化数据）
-        new_item = self.dao.add(data)
-
-        # 返回结果
-        return {
-            "data": new_item,
-            "message": "添加成功"
-        }
+        try:
+            # 添加到数据库（返回序列化数据）
+            new_item = self.dao.add(data)
+            return {
+                "success": True,
+                "data": new_item,
+                "id": new_item.get("id") if new_item else None,
+                "message": "添加成功"
+            }
+        except Exception as e:
+            # 实际项目中应该有更详细的异常处理
+            return {
+                "success": False,
+                "data": None,
+                "message": f"添加失败: {str(e)}"
+            }
 
     def update(self, id: int, data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -85,16 +89,31 @@ class BaseService(Generic[ModelType]):
         if not existing_item:
             return {"success": False, "message": "记录不存在"}
 
-        # 更新记录
-        success = self.dao.update_by_id(id, data)
-        # 获取更新后的记录
-        updated_item = self.dao.get_by_id(id) if success else None
+        try:
+            # 更新记录
+            success = self.dao.update_by_id(id, data)
 
-        return {
-            "status": success,
-            "data": updated_item,
-            "message": "更新成功" if success else "更新失败"
-        }
+            if success:
+                # 获取更新后的记录
+                updated_item = self.dao.get_by_id(id)
+                return {
+                    "success": True,
+                    "data": updated_item,
+                    "message": "更新成功",
+                    "changed_fields": list(data.keys())  # 可选：返回变更的字段
+                }
+            else:
+                return {
+                    "success": False,
+                    "data": None,
+                    "message": "更新失败"
+                }
+        except Exception as e:
+            return {
+                "success": False,
+                "data": None,
+                "message": f"更新失败: {str(e)}"
+            }
 
     def delete(self, id: int) -> Dict[str, Any]:
         """
@@ -111,13 +130,20 @@ class BaseService(Generic[ModelType]):
         if not existing_item:
             return {"success": False, "message": "记录不存在"}
 
-        # 执行删除
-        success = self.dao.delete_by_id(id)
+        try:
+            # 执行删除
+            success = self.dao.delete_by_id(id)
 
-        return {
-            "success": success,
-            "message": "删除成功" if success else "删除失败"
-        }
+            return {
+                "success": success,
+                "deleted_id": id,
+                "message": "删除成功" if success else "删除失败"
+            }
+        except Exception as e:
+            return {
+                "success": False,
+                "message": f"删除失败: {str(e)}"
+            }
 
     def get_list_by_filters(self, filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """

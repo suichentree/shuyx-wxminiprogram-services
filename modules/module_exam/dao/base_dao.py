@@ -78,6 +78,11 @@ class BaseDao(Generic[ModelType]):
             data: 更新数据字典
         """
         with session_maker() as db_session:
+            # 检查记录是否存在
+            existing = db_session.query(self.model).filter(self.model.id == id).first()
+            if not existing:
+                return False
+
             # 过滤出模型中存在的字段
             model_fields = {col.name for col in self.model.__table__.columns}
             update_data = {k: v for k, v in data.items() if k in model_fields and v is not None}
@@ -95,6 +100,11 @@ class BaseDao(Generic[ModelType]):
             id: 要删除的记录ID
         """
         with session_maker() as db_session:
+            # 检查记录是否存在
+            existing = db_session.query(self.model).filter(self.model.id == id).first()
+            if not existing:
+                return False
+
             affected_rows = db_session.query(self.model).filter(self.model.id == id).delete()
             db_session.commit()  # 显式提交事务
             return affected_rows > 0
