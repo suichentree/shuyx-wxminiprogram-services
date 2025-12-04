@@ -38,7 +38,7 @@ class BaseService(Generic[ModelType]):
             "page_size": page_size
         }
 
-    def get_by_id(self, id: int) -> Optional[Dict[str, Any]]:
+    def get_by_id(self, id: int) -> Dict[str, Any]:
         """
         根据ID获取详情
 
@@ -49,6 +49,32 @@ class BaseService(Generic[ModelType]):
             Optional[Dict[str, Any]]: 找到则返回序列化数据，未找到则返回None
         """
         return self.dao.get_by_id(id)
+
+
+    def get_list_by_filters(self, filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        """
+        根据条件获取列表
+
+        Args:
+            filters: 查询条件字典
+
+        Returns:
+            List[Dict[str, Any]]: 符合条件的序列化数据列表
+        """
+        return self.dao.get_list_by_filters(filters)
+
+    def get_one_by_filters(self, filters: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        根据条件获取单条记录
+
+        Args:
+            filters: 查询条件字典
+
+        Returns:
+            Optional[Dict[str, Any]]: 找到的序列化数据，未找到则返回None
+        """
+        return self.dao.get_one_by_filters(filters)
+
 
     def add(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -61,16 +87,15 @@ class BaseService(Generic[ModelType]):
             new_item = self.dao.add(data)
             return {
                 "success": True,
-                "data": new_item,
-                "id": new_item.get("id") if new_item else None,
+                "data": new_item if new_item else None,   # 返回新增记录的序列化数据
                 "message": "添加成功"
             }
         except Exception as e:
-            # 实际项目中应该有更详细的异常处理
+            # 异常处理
             return {
                 "success": False,
                 "data": None,
-                "message": f"添加失败: {str(e)}"
+                "message": f"添加失败,异常信息为：{str(e)}"
             }
 
     def update(self, id: int, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -87,32 +112,21 @@ class BaseService(Generic[ModelType]):
         # 检查记录是否存在
         existing_item = self.dao.get_by_id(id)
         if not existing_item:
-            return {"success": False, "message": "记录不存在"}
+            return {"success": False, "data": None, "message": "记录不存在"}
 
         try:
-            # 更新记录
+            # 更新记录（返回是否成功）
             success = self.dao.update_by_id(id, data)
-
-            if success:
-                # 获取更新后的记录
-                updated_item = self.dao.get_by_id(id)
-                return {
-                    "success": True,
-                    "data": updated_item,
-                    "message": "更新成功",
-                    "changed_fields": list(data.keys())  # 可选：返回变更的字段
-                }
-            else:
-                return {
-                    "success": False,
-                    "data": None,
-                    "message": "更新失败"
-                }
+            return {
+                "success": success,
+                "data": None,
+                "message": "更新成功" if success else "更新失败"
+            }
         except Exception as e:
             return {
                 "success": False,
                 "data": None,
-                "message": f"更新失败: {str(e)}"
+                "message": f"更新失败,异常信息为：{str(e)}"
             }
 
     def delete(self, id: int) -> Dict[str, Any]:
@@ -128,43 +142,20 @@ class BaseService(Generic[ModelType]):
         # 检查记录是否存在
         existing_item = self.dao.get_by_id(id)
         if not existing_item:
-            return {"success": False, "message": "记录不存在"}
+            return {"success": False, "data": None, "message": "记录不存在"}
 
         try:
-            # 执行删除
+            # 执行删除（返回是否成功）
             success = self.dao.delete_by_id(id)
-
             return {
                 "success": success,
-                "deleted_id": id,
+                "data": None,
                 "message": "删除成功" if success else "删除失败"
             }
         except Exception as e:
             return {
                 "success": False,
+                "data": None,
                 "message": f"删除失败: {str(e)}"
             }
 
-    def get_list_by_filters(self, filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
-        """
-        根据条件获取列表
-
-        Args:
-            filters: 查询条件字典
-
-        Returns:
-            List[Dict[str, Any]]: 符合条件的序列化数据列表
-        """
-        return self.dao.get_list_by_filters(filters)
-
-    def get_one_by_filters(self, filters: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """
-        根据条件获取单条记录
-
-        Args:
-            filters: 查询条件字典
-
-        Returns:
-            Optional[Dict[str, Any]]: 找到的序列化数据，未找到则返回None
-        """
-        return self.dao.get_one_by_filters(filters)

@@ -20,7 +20,7 @@ class BaseDao(Generic[ModelType]):
         """
         self.model = model
 
-    def get_page_list(self, page_size: int, page_num: int) -> List[ModelType]:
+    def get_page_list(self, page_size: int, page_num: int) -> List[Dict[str, Any]]:
         """
         获取分页列表
             page_size: 每页大小
@@ -41,7 +41,7 @@ class BaseDao(Generic[ModelType]):
         with session_maker() as db_session:
             return db_session.query(self.model).count()
 
-    def get_by_id(self, id: int) -> Optional[ModelType]:
+    def get_by_id(self, id: int) -> Dict[str, Any]:
         """
         根据ID获取单条记录
             id: 记录ID
@@ -52,7 +52,7 @@ class BaseDao(Generic[ModelType]):
             result = record.to_dict() if record else None
             return result
 
-    def get_list_by_filters(self, filters: Optional[Dict[str, Any]] = None) -> List[ModelType]:
+    def get_list_by_filters(self, filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """
         根据条件查询列表
             filters: 查询条件字典
@@ -71,62 +71,7 @@ class BaseDao(Generic[ModelType]):
             result = record.to_dict() if record else None
             return result
 
-    def update_by_id(self, id: int, data: Dict[str, Any]) -> bool:
-        """
-        根据ID更新信息
-            id: 要更新的记录ID
-            data: 更新数据字典
-        """
-        with session_maker() as db_session:
-            # 检查记录是否存在
-            existing = db_session.query(self.model).filter(self.model.id == id).first()
-            if not existing:
-                return False
-
-            # 过滤出模型中存在的字段
-            model_fields = {col.name for col in self.model.__table__.columns}
-            update_data = {k: v for k, v in data.items() if k in model_fields and v is not None}
-
-            if not update_data:
-                return True  # 没有需要更新的字段，视为成功
-
-            affected_rows = db_session.query(self.model).filter(self.model.id == id).update(update_data)
-            db_session.commit()  # 显式提交事务
-            return affected_rows > 0
-
-    def delete_by_id(self, id: int) -> bool:
-        """
-        根据ID删除记录
-            id: 要删除的记录ID
-        """
-        with session_maker() as db_session:
-            # 检查记录是否存在
-            existing = db_session.query(self.model).filter(self.model.id == id).first()
-            if not existing:
-                return False
-
-            affected_rows = db_session.query(self.model).filter(self.model.id == id).delete()
-            db_session.commit()  # 显式提交事务
-            return affected_rows > 0
-
-    def add(self, data: Dict[str, Any]) -> Optional[ModelType]:
-        """
-        添加新记录
-            data: 添加数据字典
-        """
-        with session_maker() as db_session:
-            # 过滤出模型中存在的字段
-            model_fields = {col.name for col in self.model.__table__.columns}
-            model_data = {k: v for k, v in data.items() if k in model_fields}
-
-            instance = self.model(**model_data)
-            db_session.add(instance)
-            db_session.flush()  # 获取新生成的ID
-            db_session.commit()  # 显式提交事务
-            # 返回序列化后的数据
-            return instance.to_dict()
-
-    def get_one_by_filters(self, filters: Dict[str, Any]) -> Optional[ModelType]:
+    def get_one_by_filters(self, filters: Dict[str, Any]) -> Dict[str, Any]:
         """
         根据条件获取单条记录
             filters: 查询条件字典
@@ -144,3 +89,52 @@ class BaseDao(Generic[ModelType]):
             result = record.to_dict() if record else None
             # 返回序列化后的数据
             return result
+
+    def update_by_id(self, id: int, data: Dict[str, Any]) -> bool:
+        """
+        根据ID更新信息
+            id: 要更新的记录ID
+            data: 更新数据字典
+        """
+        with session_maker() as db_session:
+            # 过滤出模型中存在的字段
+            model_fields = {col.name for col in self.model.__table__.columns}
+            update_data = {k: v for k, v in data.items() if k in model_fields and v is not None}
+
+            if not update_data:
+                return True  # 没有需要更新的字段，视为成功
+
+            # 执行更新并获取受影响的行数
+            # 如果受影响的行数为0，说明记录不存在。大于0说明更新成功
+            affected_rows = db_session.query(self.model).filter(self.model.id == id).update(update_data)
+            db_session.commit()  # 显式提交事务
+            return affected_rows > 0
+
+    def delete_by_id(self, id: int) -> bool:
+        """
+        根据ID删除记录
+            id: 要删除的记录ID
+        """
+        with session_maker() as db_session:
+            # 执行删除并获取受影响的行数
+            # 如果受影响的行数为0，说明记录不存在。大于0说明删除成功
+            affected_rows = db_session.query(self.model).filter(self.model.id == id).delete()
+            db_session.commit()  # 显式提交事务
+            return affected_rows > 0
+
+    def add(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        添加新记录
+            data: 添加数据字典
+        """
+        with session_maker() as db_session:
+            # 过滤出模型中存在的字段
+            model_fields = {col.name for col in self.model.__table__.columns}
+            model_data = {k: v for k, v in data.items() if k in model_fields}
+
+            instance = self.model(**model_data)
+            db_session.add(instance)
+            db_session.commit()  # 显式提交事务
+            # 使用 SQLAlchemy-Serializer 序列化数据,并返回序列化后的数据
+            return instance.to_dict()
+
