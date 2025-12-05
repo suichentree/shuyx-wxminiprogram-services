@@ -1,8 +1,10 @@
 from datetime import datetime
+from typing import List, Dict, Any
 
 from fastapi import APIRouter,Body
 from config.log_config import logger
 from modules.module_exam.model.mp_exam_model import MpExamModel
+from modules.module_exam.model.mp_option_model import MpOptionModel
 from modules.module_exam.service.mp_exam_service import MpExamService
 from modules.module_exam.service.mp_option_service import MpOptionService
 from modules.module_exam.service.mp_question_service import MpQuestionService
@@ -58,60 +60,68 @@ def getQuestionList(exam_id:int):
 单选题答题
 """
 @router.post("/danxueAnswer")
-def danxueAnswer(user_id = Body(...),exam_id = Body(...),question_id = Body(...),option_id = Body(...),page_no = Body(...)):
-    logger.info(f'/mp/exam/danxueAnswer, user_id = {user_id}, exam_id = {exam_id}, question_id = {question_id}, option_id = {option_id}, page_no = {page_no}')
+def danxueAnswer(userId = Body(...),examId = Body(...),questionId = Body(...),optionId = Body(...),pageNo = Body(...)):
+    logger.info(f'/mp/exam/danxueAnswer, userId = {userId}, examId = {examId}, questionId = {questionId}, optionId = {optionId}, pageNo = {pageNo}')
 
     # 查询选项信息
-    option_result = option_service.get_by_id({"option_id": option_id})
+    option_result = option_service.get_by_id({"option_id": optionId})
     if option_result is None:
         return ResponseUtil.error(msg="选项不存在")
 
     # 查询题目个数
     question_count = question_service.get_list_by_filters(filters={
-        "exam_id": exam_id
+        "examId": examId
     }).count()
 
     # 查询用户是否有没做完的测试记录
-    exam_result: MpExamModel = service.get_one_by_filters(filters={
-        "user_id": user_id,
-        "exam_id": exam_id,
-        "is_finished": False
+    exam_result = service.get_one_by_filters(filters={
+        "userId": userId,
+        "examId": examId,
+        "is_finished": 0
     })
 
     if exam_result is None:
-        logger.info(f'用户 user_id = {user_id}, exam_id = {exam_id}, 无未做完测试，创建新的测试记录')
+        logger.info(f'用户 userId = {userId}, examId = {examId}, 无未做完测试，创建新的测试记录')
         # 创建新的测试记录
         service.add({
-            "user_id": user_id,
-            "exam_id": exam_id,
-            "page_no": page_no,
+            "userId": userId,
+            "examId": examId,
+            "page_no": pageNo,
             "score": option_result['score'],
             "create_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         })
     else:
-        logger.info(f'用户 user_id = {user_id}, exam_id = {exam_id}, 有未做完测试，继续测试')
+        logger.info(f'用户 userId = {userId}, examId = {examId}, 有未做完测试，继续测试')
         exam_result['score'] += option_result['score']
-        exam_result['page_no'] = page_no
+        exam_result['page_no'] = pageNo
         # 若题号和题目数相等，则表示这是最后一题
-        if page_no == question_count:
+        if pageNo == question_count:
             exam_result['finish_time'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
+    # 创建新的用户选项信息
+    new_useroption = {
+        "userId": userId,
+        "examId": examId,
+        "isDuoxue": 0,
+        "questionId": questionId,
+        "optionId": optionId,
+        "isRight": 1 if option_result['is_right'] == 1 else 0,
+    }
+    useroption_result = option_service.add(new_useroption)
+    # 返回新创建的用户选项信息
+    return ResponseUtil.success(data=useroption_result if useroption_result is not None else None)
 
-        # 检查是否超过了测试时间
-        exam_end_time = exam_no_finish_result["exam_end_time"]
-        if datetime.now() > exam_end_time:
-            return ResponseUtil.error(msg="测试时间已过")
-
-
-
-
-
-
-    # 调用服务层方法，查询考试题目信息
-    result = service.get_one_by_filters(filters={
-        "user_id": user_id,
-        "exam_id": exam_id,
-        "question_id": question_id
+"""
+多选题答题
+"""
+@router.post("/duoxueAnswer")
+def duoxue_Answer(userId = Body(...),examId = Body(...),questionId = Body(...),optionIds = Body(...),pageNo = Body(...)):
+    logger.info(f'/mp/exam/duoxueAnswer, user_id = {userId}, exam_id = {examId}, question_id = {questionId}, option_ids = {optionIds}, page_no = {pageNo}')
+    # 查询题目的正确选项集合
+    option_result:List[Dict[str,Any]] = option_service.get_list_by_filters(filters={
+        "questionId": questionId,
+        "score": 1
     })
-    # 若result为空，则返回空列表。不为空则返回result
-    return ResponseUtil.success(data=result if result is not None else [])
+
+
+
