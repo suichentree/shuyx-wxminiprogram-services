@@ -50,7 +50,6 @@ class BaseService(Generic[ModelType]):
         """
         return self.dao.get_by_id(id)
 
-
     def get_list_by_filters(self, filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """
         根据条件获取列表
@@ -75,7 +74,6 @@ class BaseService(Generic[ModelType]):
         """
         return self.dao.get_one_by_filters(filters)
 
-
     def add(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """
         添加记录到数据库
@@ -97,6 +95,7 @@ class BaseService(Generic[ModelType]):
                 "data": None,
                 "message": f"添加失败,异常信息为：{str(e)}"
             }
+
 
     def update(self, id: int, data: Dict[str, Any]) -> Dict[str, Any]:
         """

@@ -11,8 +11,7 @@ router = APIRouter(prefix='/mp/wxservice', tags=['mp_wxservice接口'])
 APP_ID:str = "wxf9788c249032b959"
 APP_SECRET:str = "c69674e1cb73d754ef9cab64f3553867"
 
-@router.get("/getOpenIdByWX")
-async def getOpenIdByWX(code:str):
+def getOpenIdByWX(code:str):
     """
     调用微信小程序登录接口,通过微信小程序登录凭证（code）获取用户OpenID
     """
@@ -22,7 +21,7 @@ async def getOpenIdByWX(code:str):
     response = requests.get(url)
     # 获取响应结果
     response_info = json.loads(response.text)
-    return ResponseUtil.success(data=response_info)
+    return response_info
 
 @router.get("/getAccessToken")
 async def getAccessToken():
