@@ -95,7 +95,7 @@ def wxLogin(code:str = Body(None),headUrl:str = Body(None),name:str = Body(None)
             unionId = wxinfo.get("unionid")
 
         # 根据openid 查询用户是否存在
-        user = MpUserService_instance.get_one_by_filters(filters={"openId": openId})
+        user = MpUserService_instance.get_one_by_filters(filters={"wx_openid": openId})
         if user is None:
             # 查询不出用户，则注册用户
             newuser = {
