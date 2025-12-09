@@ -21,7 +21,7 @@ myEngine = create_engine(MYSQL_DATABASE_URL,
 myBaseModel = declarative_base()
 
 # 创建会话对象mySession
-mySession = sessionmaker(autocommit=False, autoflush=False, bind=myEngine)
+mySession = sessionmaker(autocommit=False, autoflush=False, bind=myEngine, expire_on_commit=False)
 
 # 使用上下文模块，封装session,实现session的自动提交，自动回滚，自动关闭
 @contextmanager

@@ -79,9 +79,11 @@ class BaseDao(Generic[ModelType]):
         with session_maker() as db_session:
             query = db_session.query(self.model)
 
-            for field, value in filters.items():
-                if hasattr(self.model, field) and value is not None:
-                    query = query.filter(getattr(self.model, field) == value)
+            # 动态构建查询条件
+            if filters:
+                for field, value in filters.items():
+                    if hasattr(self.model, field) and value is not None:
+                        query = query.filter(getattr(self.model, field) == value)
 
             # 执行查询并获取第一条记录
             record = query.first()

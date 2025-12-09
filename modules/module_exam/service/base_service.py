@@ -80,21 +80,8 @@ class BaseService(Generic[ModelType]):
         Args:
             data: 要添加的数据字典
         """
-        try:
-            # 添加到数据库（返回序列化数据）
-            new_item = self.dao.add(data)
-            return {
-                "success": True,
-                "data": new_item if new_item else None,   # 返回新增记录的序列化数据
-                "message": "添加成功"
-            }
-        except Exception as e:
-            # 异常处理
-            return {
-                "success": False,
-                "data": None,
-                "message": f"添加失败,异常信息为：{str(e)}"
-            }
+        new_item = self.dao.add(data)
+        return new_item if new_item else None
 
 
     def update(self, id: int, data: Dict[str, Any]) -> Dict[str, Any]:

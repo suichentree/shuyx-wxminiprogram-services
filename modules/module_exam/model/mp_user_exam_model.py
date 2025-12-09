@@ -12,9 +12,9 @@ class MpUserExamModel(Base):
     __tablename__ = 'mp_user_exam'
 
     id = Column("id",Integer, primary_key=True, autoincrement=True, comment='用户测试id')
-    userId = Column("user_id", Integer, nullable=False, comment='用户id')
-    examId = Column("exam_id", Integer, nullable=False, comment='测试id')
-    pageNo = Column("page_no", Integer, nullable=False, comment='当前页码')
+    user_id = Column("user_id", Integer, nullable=False, comment='用户id')
+    exam_id = Column("exam_id", Integer, nullable=False, comment='测试id')
+    page_no = Column("page_no", Integer, nullable=False, comment='当前页码')
     score = Column("score", Integer, nullable=False, comment='用户测试分数')
-    createTime = Column("create_time",DateTime, comment='创建时间', default=func.now())
-    finishTime = Column("finish_time", DateTime, comment='测试完成时间')
+    create_time = Column("create_time",DateTime, comment='创建时间', default=func.now())
+    finish_time = Column("finish_time", DateTime, comment='测试完成时间')

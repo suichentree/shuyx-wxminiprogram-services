@@ -14,11 +14,11 @@ class MpQuestionModel(Base,SerializerMixin):
     __tablename__ = 'mp_question'
 
     id = Column("id",Integer, primary_key=True, autoincrement=True, comment='问题id')
-    examId = Column("exam_id", Integer, nullable=False, comment='测试id')
+    exam_id = Column("exam_id", Integer, nullable=False, comment='测试id')
     name = Column("name",String(255),unique=True,nullable=False, comment='问题名称')
     type = Column("type",String(20),unique=True,nullable=False, comment='问题类型')
-    typeId = Column("type_id", Integer, nullable=False, comment='问题类型id,1为单选，2为多选')
-    isBan = Column("is_ban",Integer, default=0, comment='是否禁用 0正常 1停用')
+    type_id = Column("type_id", Integer, nullable=False, comment='问题类型id,1为单选，2为多选')
+    is_ban = Column("is_ban",Integer, default=0, comment='是否禁用 0正常 1停用')
     status = Column("status",Integer, default=0, comment='测试状态 0正常 1停用')
-    createTime = Column("create_time",DateTime, comment='创建时间', default=func.now())
+    create_time = Column("create_time",DateTime, comment='创建时间', default=func.now())
 
