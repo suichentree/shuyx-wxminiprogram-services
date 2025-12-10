@@ -2,10 +2,12 @@
 from sqlalchemy import Column, Integer, String ,DateTime,CHAR,func
 # 导入sqlalchemy的Base类
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy_serializer import SerializerMixin
+
 # 创建基类Base
 Base = declarative_base()
 
-class MpOptionModel(Base):
+class MpOptionModel(Base,SerializerMixin):
     """
     选项表 mp_option
     """

@@ -16,6 +16,7 @@ async def AuthMiddleware(request: Request, call_next: Callable):
 
     # 检查是否是精确匹配的路径
     if request.url.path in exact_paths:
+        # 直接放行
         return await call_next(request)
 
     # 检查是否是测试路径前缀

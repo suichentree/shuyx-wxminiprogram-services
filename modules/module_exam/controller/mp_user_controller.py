@@ -5,7 +5,6 @@ from fastapi import APIRouter,Body
 from config.log_config import logger
 from modules.module_exam.service.mp_user_service import MpUserService
 from modules.module_exam.controller.wx_controller import getOpenIdByWX
-from modules.module_exam.model.mp_user_model import MpUserModel
 from utils.response_util import ResponseUtil
 from utils.jwt_util import JWTUtil
 
@@ -14,6 +13,56 @@ router = APIRouter(prefix='/mp/user', tags=['mp_user接口'])
 
 # 创建服务实例
 MpUserService_instance = MpUserService()
+
+
+"""
+微信登录接口
+1.传入code，得到用户的openId和unionId
+2.注册或登录用户
+"""
+@router.post("/wxLogin")
+def wxLogin(code:str = Body(None),headUrl:str = Body(None),name:str = Body(None),gender:int = Body(None),address:str = Body(None)):
+        logger.info(f'/mp/user/wxLogin, code = {code}, headUrl = {headUrl}, name = {name}, gender = {gender}, address = {address}')
+        # 根据code获取openId和unionId
+        openId:str = None
+        unionId:str = None
+        wxinfo = getOpenIdByWX(code)
+        if wxinfo is not None:
+            openId = wxinfo.get("openid")
+            unionId = wxinfo.get("unionid")
+
+        # 根据openid 查询用户是否存在
+        user = MpUserService_instance.get_one_by_filters(filters={"wx_openid": openId})
+        if user is None:
+            # 查询不出用户，则注册用户
+            newuser = {
+                "wx_openid": openId,
+                "wx_unionid": unionId,
+                "head_url": headUrl,
+                "name": name,
+                "gender": gender,
+                "login_count":1,
+                "last_login_time": datetime.now()
+            }
+            # 调用服务层方法，新增用户
+            result = MpUserService_instance.add(data=newuser)
+            if result is None:
+                return ResponseUtil.error(data={"message": "微信注册用户失败"})
+
+        else:
+            # 查询到用户，则用户登录
+            user["login_count"] += 1
+            user["last_login_time"] = datetime.now()
+            result = MpUserService_instance.update_by_id(id=user["id"],data=user)
+            if result is False:
+                return ResponseUtil.error(data={"message": "微信登录用户失败"})
+
+
+        # 创建token,传入openId,userId生成token
+        token = JWTUtil.create_token({"openId": openId,"userId":user["id"]})
+        # 返回响应数据
+        return ResponseUtil.success(data={"openId": openId,"userId":user["id"],"token":token})
+
 
 """
 手机号注册接口
@@ -78,53 +127,8 @@ def phoneLogin(phone:str = Body(...),password:str = Body(...),newpassword:str = 
     else:
         return ResponseUtil.error(data={"isReset": 0,"message": "重置密码失败2"})
 
-"""
-微信登录接口
-1.传入code，得到用户的openId和unionId
-2.注册或登录用户
-"""
-@router.post("/wxLogin")
-def wxLogin(code:str = Body(None),headUrl:str = Body(None),name:str = Body(None),gender:int = Body(None),address:str = Body(None)):
-        logger.info(f'/mp/user/wxLogin, code = {code}, headUrl = {headUrl}, name = {name}, gender = {gender}, address = {address}')
-        # 根据code获取openId和unionId
-        openId:str = None
-        unionId:str = None
-        wxinfo = getOpenIdByWX(code)
-        if wxinfo is not None:
-            openId = wxinfo.get("openid")
-            unionId = wxinfo.get("unionid")
-
-        # 根据openid 查询用户是否存在
-        user = MpUserService_instance.get_one_by_filters(filters={"wx_openid": openId})
-        if user is None:
-            # 查询不出用户，则注册用户
-            newuser = {
-                "openId": openId,
-                "unionId": unionId,
-                "headUrl": headUrl,
-                "name": name,
-                "gender": gender,
-                "loginCount":1,
-                "lastLoginTime": datetime.now()
-            }
-            # 调用服务层方法，新增用户
-            result = MpUserService_instance.add(model_instance=newuser)
-            if result is False:
-                return ResponseUtil.error(data={"message": "微信注册用户失败"})
-
-        else:
-            # 查询到用户，则用户登录
-            user.loginCount += 1
-            user.lastLoginTime = datetime.now()
-            result = MpUserService_instance.update_by_id(id=user.id,model_instance=user)
-            if result:
-                return ResponseUtil.error(data={"message": "微信登录用户失败"})
 
 
-        # 创建token,传入openId,userId生成token
-        token = JWTUtil.create_token({"openId": openId,"userId":user.id})
-        # 返回响应数据
-        return ResponseUtil.success(data={"openId": openId,"userId":user.id,"token":token})
 
 @router.post("/saveUserINFO")
 def saveUserINFO(userId:int = Body(),head:str = Body(),name:str = Body(),gender:int = Body(),age = Body(),address:str = Body(),phone = Body(),email = Body()):

@@ -20,26 +20,46 @@ class BaseDao(Generic[ModelType]):
         """
         self.model = model
 
-    def get_page_list(self, page_size: int, page_num: int) -> List[Dict[str, Any]]:
+    def get_page_list_by_filters(self, page_size: int, page_num: int, filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """
         获取分页列表
             page_size: 每页大小
             page_num: 页码
+            filters: 查询条件字典
         """
         with session_maker() as db_session:
+            query = db_session.query(self.model)
+
+            # 动态构建查询条件
+            if filters:
+                for field, value in filters.items():
+                    if hasattr(self.model, field) and value is not None:
+                        query = query.filter(getattr(self.model, field) == value)
+
+            # 计算分页偏移量
             offset_value = (page_num - 1) * page_size
-            record = db_session.query(self.model).offset(offset_value).limit(page_size).all()
+            # 获取当前分页数据
+            record = query.offset(offset_value).limit(page_size).all()
             # 使用 SQLAlchemy-Serializer 序列化数据
             result = [item.to_dict() for item in record]
             # 返回序列化后的列表数据
             return result
 
-    def get_total(self) -> int:
+    def get_total_by_filters(self, filters: Optional[Dict[str, Any]] = None) -> int:
         """
         获取记录总数
+            filters: 查询条件字典
         """
         with session_maker() as db_session:
-            return db_session.query(self.model).count()
+            query = db_session.query(self.model)
+
+            # 动态构建查询条件
+            if filters:
+                for field, value in filters.items():
+                    if hasattr(self.model, field) and value is not None:
+                        query = query.filter(getattr(self.model, field) == value)
+
+            return query.count()
 
     def get_by_id(self, id: int) -> Dict[str, Any]:
         """
@@ -99,7 +119,7 @@ class BaseDao(Generic[ModelType]):
             data: 更新数据字典
         """
         with session_maker() as db_session:
-            # 过滤出模型中存在的字段
+            # 遍历data，过滤出模型中存在的字段
             model_fields = {col.name for col in self.model.__table__.columns}
             update_data = {k: v for k, v in data.items() if k in model_fields and v is not None}
 
@@ -130,10 +150,11 @@ class BaseDao(Generic[ModelType]):
             data: 添加数据字典
         """
         with session_maker() as db_session:
-            # 过滤出模型中存在的字段
+            # 遍历data，过滤出模型中存在的字段
             model_fields = {col.name for col in self.model.__table__.columns}
             model_data = {k: v for k, v in data.items() if k in model_fields}
 
+            # 将字典数据转换为模型实例
             instance = self.model(**model_data)
             db_session.add(instance)
             db_session.commit()  # 显式提交事务
