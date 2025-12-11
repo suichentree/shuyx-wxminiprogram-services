@@ -37,6 +37,14 @@ class BaseService(Generic[ModelType]):
             "page_size": page_size
         }
 
+    def get_total(self,filters: Optional[Dict[str, Any]] = None) -> int:
+        """
+        获取符合条件的记录总数
+        Args:
+            filters: 查询条件字典
+        """
+        return self.dao.get_total_by_filters(filters)
+
     def get_by_id(self, id: int) -> Dict[str, Any]:
         """
         根据ID获取详情

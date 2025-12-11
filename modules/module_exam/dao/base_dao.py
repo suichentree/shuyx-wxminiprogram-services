@@ -88,7 +88,7 @@ class BaseDao(Generic[ModelType]):
 
             record = query.all()
             # 使用 SQLAlchemy-Serializer 序列化数据
-            result = record.to_dict() if record else None
+            result = [item.to_dict() for item in record]
             return result
 
     def get_one_by_filters(self, filters: Dict[str, Any]) -> Dict[str, Any]:

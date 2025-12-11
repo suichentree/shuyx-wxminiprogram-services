@@ -24,8 +24,10 @@ myBaseModel = declarative_base()
 mySession = sessionmaker(autocommit=False, autoflush=False, bind=myEngine, expire_on_commit=False)
 
 # 使用上下文模块，封装session,实现session的自动提交，自动回滚，自动关闭
+# 该函数用于创建新的会话对象，确保每个请求都有独立的会话。从而避免了并发访问同一个会话对象导致的事务冲突
 @contextmanager
-def session_maker(session=mySession()):
+def session_maker():
+    session = mySession()  # 每次都创建新的会话对象
     try:
         yield session
         session.commit()
