@@ -20,6 +20,8 @@ myEngine = create_engine(MYSQL_DATABASE_URL,
 # 创建统一基类
 myBaseModel = declarative_base()
 
+
+
 # 创建会话对象mySession
 mySession = sessionmaker(autocommit=False, autoflush=False, bind=myEngine, expire_on_commit=False)
 

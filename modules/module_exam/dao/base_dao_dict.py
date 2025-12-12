@@ -1,141 +1,134 @@
 from typing import List, Optional, Generic, TypeVar, Type, Dict, Any
-from pydantic import BaseModel
-from sqlalchemy.orm import DeclarativeBase
+from sqlalchemy.ext.declarative import DeclarativeMeta
 
 # 导入数据库会话工厂
 from config.database_config import session_maker
 
 # 定义模型类型变量
-ModelType = TypeVar("ModelType", bound=DeclarativeBase)
-DtoType = TypeVar("DtoType", bound=BaseModel)
+ModelType = TypeVar("ModelType", bound=DeclarativeMeta)
 
-class BaseDao(Generic[ModelType, DtoType]):
+class BaseDaoDict(Generic[ModelType]):
     """
-    基础数据访问对象类
-    提供通用的CRUD操作，专注于数据访问层，不包含业务逻辑、日志和异常处理
-    BaseDao类的各个主要方法都是接收并返回DTO类型的参数，而不是模型实例。
+    基础数据访问对象类 BaseDaoDict 提供通用的CRUD操作，专注于数据访问层，不包含业务逻辑、日志和异常处理
+    BaseDaoDict类的各个主要方法都是接收字典类型的参数，而不是模型实例。
     """
 
-    def __init__(self, model: Type[ModelType], dto: Type[DtoType]):
+    def __init__(self, model: Type[ModelType]):
         """
         初始化数据访问对象
-            model: SQLAlchemy 模型类
-            dto: Pydantic 模型类
+            model: SQLAlchemy模型类
         """
         self.model = model
-        self.dto = dto
 
-    def get_page_list_by_filters(self, page_size: int, page_num: int, filters: DtoType = None) -> List[DtoType]:
+    def get_page_list_by_filters(self, page_size: int, page_num: int, filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """
         获取分页列表
             page_size: 每页大小
             page_num: 页码
-            filters: 查询条件DTO
+            filters: 查询条件字典
         """
         with session_maker() as db_session:
             query = db_session.query(self.model)
 
             # 动态构建查询条件
             if filters:
-                # 将DTO转换为字典，过滤出非None值的字段
-                filters_dict = filters.model_dump(exclude_unset=True, exclude_none=True)
-                for field, value in filters_dict.items():
+                for field, value in filters.items():
                     if hasattr(self.model, field) and value is not None:
                         query = query.filter(getattr(self.model, field) == value)
 
             # 计算分页偏移量
             offset_value = (page_num - 1) * page_size
             # 获取当前分页数据
-            records = query.offset(offset_value).limit(page_size).all()
-            # 转换为DTO列表数据,并返回
-            return [self.dto.model_validate(record) for record in records]
+            record = query.offset(offset_value).limit(page_size).all()
+            # 使用 SQLAlchemy-Serializer 序列化数据
+            result = [item.to_dict() for item in record]
+            # 返回序列化后的列表数据
+            return result
 
-    def get_total_by_filters(self, filters: DtoType = None) -> int:
+    def get_total_by_filters(self, filters: Optional[Dict[str, Any]] = None) -> int:
         """
         获取记录总数
-            filters: 查询条件DTO
+            filters: 查询条件字典
         """
         with session_maker() as db_session:
             query = db_session.query(self.model)
 
             # 动态构建查询条件
             if filters:
-                # 将DTO转换为字典，过滤出非None值的字段
-                filters_dict = filters.model_dump(exclude_unset=True, exclude_none=True)
-                for field, value in filters_dict.items():
+                for field, value in filters.items():
                     if hasattr(self.model, field) and value is not None:
                         query = query.filter(getattr(self.model, field) == value)
 
             return query.count()
 
-    def get_by_id(self, id: int) -> DtoType:
+    def get_by_id(self, id: int) -> Dict[str, Any]:
         """
         根据ID获取单条记录
             id: 记录ID
         """
         with session_maker() as db_session:
-            # 查询单条记录
             record = db_session.query(self.model).filter(self.model.id == id).first()
-            # 转换为DTO数据,并返回
-            return self.dto.model_validate(record) if record else None
+            # 使用 SQLAlchemy-Serializer 序列化数据
+            result = record.to_dict() if record else None
+            return result
 
-    def get_list_by_filters(self, filters: DtoType = None) -> List[DtoType]:
+    def get_list_by_filters(self, filters: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
         """
         根据条件查询列表
-            filters: 查询条件DTO
+            filters: 查询条件字典
         """
         with session_maker() as db_session:
             query = db_session.query(self.model)
 
             # 动态构建查询条件
             if filters:
-                # 将DTO转换为字典，过滤出非None值的字段
-                filters_dict = filters.model_dump(exclude_unset=True, exclude_none=True)
-                for field, value in filters_dict.items():
+                for field, value in filters.items():
                     if hasattr(self.model, field) and value is not None:
                         query = query.filter(getattr(self.model, field) == value)
 
-            records = query.all()
-            return [self.dto.model_validate(record) for record in records]
+            record = query.all()
+            # 使用 SQLAlchemy-Serializer 序列化数据
+            result = [item.to_dict() for item in record]
+            return result
 
-    def get_one_by_filters(self, filters: DtoType = None) -> DtoType:
+    def get_one_by_filters(self, filters: Dict[str, Any]) -> Dict[str, Any]:
         """
         根据条件获取单条记录
-            filters: 查询条件DTO
+            filters: 查询条件字典
         """
         with session_maker() as db_session:
             query = db_session.query(self.model)
 
             # 动态构建查询条件
             if filters:
-                # 将DTO转换为字典，过滤出非None值的字段
-                filters_dict = filters.model_dump(exclude_unset=True, exclude_none=True)
-                for field, value in filters_dict.items():
+                for field, value in filters.items():
                     if hasattr(self.model, field) and value is not None:
                         query = query.filter(getattr(self.model, field) == value)
 
             # 执行查询并获取第一条记录
             record = query.first()
-            return self.dto.model_validate(record) if record else None
+            # 使用 SQLAlchemy-Serializer 序列化数据
+            result = record.to_dict() if record else None
+            # 返回序列化后的数据
+            return result
 
-    def update_by_id(self, id: int, update_data: DtoType) -> bool:
+    def update_by_id(self, id: int, data: Dict[str, Any]) -> bool:
         """
         根据ID更新信息
             id: 要更新的记录ID
-            update_date: 更新数据DTO
+            data: 更新数据字典
         """
         with session_maker() as db_session:
-            # 先获取model模型类的所有字段名
-            # 然后将DTO转换为字典，过滤出model模型类中存在的字段
+            # 遍历data，过滤出模型中存在的字段
             model_fields = {col.name for col in self.model.__table__.columns}
-            update_data_dict = update_data.model_dump(exclude_unset=True, exclude_none=True)
-            new_update_data = {k: v for k, v in update_data_dict.items() if k in model_fields}
+            update_data = {k: v for k, v in data.items() if k in model_fields and v is not None}
 
-            if not new_update_data:
+            if not update_data:
                 return True  # 没有需要更新的字段，视为成功
 
             # 执行更新并获取受影响的行数
-            affected_rows = db_session.query(self.model).filter(self.model.id == id).update(new_update_data)
+            # 如果受影响的行数为0，说明记录不存在。大于0说明更新成功
+            affected_rows = db_session.query(self.model).filter(self.model.id == id).update(update_data)
             db_session.commit()  # 显式提交事务
             return affected_rows > 0
 
@@ -151,22 +144,20 @@ class BaseDao(Generic[ModelType, DtoType]):
             db_session.commit()  # 显式提交事务
             return affected_rows > 0
 
-    def add(self, data: DtoType) -> DtoType:
+    def add(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """
         添加新记录
-            data: 添加数据DTO
+            data: 添加数据字典
         """
         with session_maker() as db_session:
             # 遍历data，过滤出模型中存在的字段
             model_fields = {col.name for col in self.model.__table__.columns}
-            model_data = data.model_dump(exclude_unset=True, exclude_none=True)
-            model_data = {k: v for k, v in model_data.items() if k in model_fields}
+            model_data = {k: v for k, v in data.items() if k in model_fields}
 
             # 将字典数据转换为模型实例
             instance = self.model(**model_data)
             db_session.add(instance)
             db_session.commit()  # 显式提交事务
-            # 将模型实例转换为DTO返回
-            return self.dto.model_validate(instance)
-
+            # 使用 SQLAlchemy-Serializer 序列化数据,并返回序列化后的数据
+            return instance.to_dict()
 

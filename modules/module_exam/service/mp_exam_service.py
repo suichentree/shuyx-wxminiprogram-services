@@ -1,8 +1,9 @@
 from ..dao.mp_exam_dao import MpExamDao
+from ..dto.mp_exam_dto import MpExamDTO
 from ..model.mp_exam_model import MpExamModel
 from .base_service import BaseService
 
-class MpExamService(BaseService[MpExamModel]):
+class MpExamService(BaseService[MpExamModel,MpExamDTO]):
     """
     MpExamService 类，继承自通用服务基类
     提供相关的业务逻辑处理

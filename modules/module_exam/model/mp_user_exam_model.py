@@ -1,13 +1,9 @@
 # 导入sqlalchemy框架中的相关字段
 from sqlalchemy import Column, Integer, String ,DateTime,CHAR,func
-# 导入sqlalchemy的Base类
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy_serializer import SerializerMixin
+# 导入公共基类
+from config.database_config import myBaseModel
 
-# 创建基类Base
-Base = declarative_base()
-
-class MpUserExamModel(Base,SerializerMixin):
+class MpUserExamModel(myBaseModel):
     """
     用户测试表 mp_user_exam
     """

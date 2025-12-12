@@ -147,13 +147,14 @@ def duoxue_Answer(userId = Body(None),examId = Body(None),questionId = Body(None
     logger.info(f'/mp/exam/duoxue_Answer, user_id = {userId}, exam_id = {examId}, question_id = {questionId}, option_ids = {optionIds}, page_no = {pageNo}')
 
     # 查询题目的正确选项集合
-    rightIds:List[Dict[str,Any]] = MpOptionService_instance.get_list_by_filters(filters={
+    rightList = MpOptionService_instance.get_list_by_filters(filters={
         "question_id": questionId,
         "score": 1
     })
+    rightIds = [item['id'] for item in rightList]
 
     # 将正确的选项集合与用户选项的数组进行对比
-    isSame:bool = None
+    isSame:bool
     if rightIds == optionIds:
         isSame = True
     else:
