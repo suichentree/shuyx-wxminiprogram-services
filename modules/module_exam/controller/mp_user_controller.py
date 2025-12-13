@@ -3,6 +3,7 @@ from typing import Annotated, Optional
 
 from fastapi import APIRouter,Body
 from config.log_config import logger
+from modules.module_exam.dto.mp_user_dto import MpUserDTO
 from modules.module_exam.service.mp_user_service import MpUserService
 from modules.module_exam.controller.wx_controller import getOpenIdByWX
 from utils.response_util import ResponseUtil
@@ -21,48 +22,47 @@ MpUserService_instance = MpUserService()
 2.注册或登录用户
 """
 @router.post("/wxLogin")
-def wxLogin(code:str = Body(None),headUrl:str = Body(None),name:str = Body(None),gender:int = Body(None),address:str = Body(None)):
-        logger.info(f'/mp/user/wxLogin, code = {code}, headUrl = {headUrl}, name = {name}, gender = {gender}, address = {address}')
+def wxLogin(code:str = Body(None),dto:MpUserDTO = Body(None)):
+        logger.info(f'/mp/user/wxLogin, code = {code}, dto = {dto}')
         # 根据code获取openId和unionId
-        openId:str = None
-        unionId:str = None
         wxinfo = getOpenIdByWX(code)
         if wxinfo is not None:
             openId = wxinfo.get("openid")
             unionId = wxinfo.get("unionid")
+        else:
+            return ResponseUtil.error(data={"message": "无法获取用户openId,unionId"})
 
         # 根据openid 查询用户是否存在
-        user = MpUserService_instance.get_one_by_filters(filters={"wx_openid": openId})
+        user:MpUserDTO = MpUserService_instance.get_one_by_filters(filters=MpUserDTO(wx_openid=openId))
         if user is None:
             # 查询不出用户，则注册用户
-            newuser = {
-                "wx_openid": openId,
-                "wx_unionid": unionId,
-                "head_url": headUrl,
-                "name": name,
-                "gender": gender,
-                "login_count":1,
-                "last_login_time": datetime.now()
-            }
+            newuser = MpUserDTO(
+                wx_openid=openId,
+                wx_unionid=unionId,
+                head_url=dto.head_url,
+                name=dto.name,
+                gender=dto.gender,
+                login_count=1,
+                last_login_time= datetime.now()
+            )
             # 调用服务层方法，新增用户
             result = MpUserService_instance.add(data=newuser)
             if result is None:
                 return ResponseUtil.error(data={"message": "微信注册用户失败"})
 
         else:
-            # 查询到用户，则用户登录
-            user["login_count"] += 1
-            user["last_login_time"] = datetime.now()
-            result = MpUserService_instance.update_by_id(id=user["id"],data=user)
+            # 查询到用户，则登录用户
+            user.login_count += 1
+            user.last_login_time = datetime.now()
+            # 调用服务层方法，更新用户
+            result = MpUserService_instance.update_by_id(id=user.id,update_data=user)
             if result is False:
                 return ResponseUtil.error(data={"message": "微信登录用户失败"})
 
-
         # 创建token,传入openId,userId生成token
-        token = JWTUtil.create_token({"openId": openId,"userId":user["id"]})
+        token = JWTUtil.create_token({"openId": openId,"userId":user.id})
         # 返回响应数据
-        return ResponseUtil.success(data={"openId": openId,"userId":user["id"],"token":token})
-
+        return ResponseUtil.success(data={"openId": openId,"userId":user.id,"token":token})
 
 """
 手机号注册接口

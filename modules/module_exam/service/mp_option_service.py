@@ -1,9 +1,10 @@
 from .base_service import BaseService
 from ..dao.mp_option_dao import MpOptionDao
+from ..dto.mp_option_dto import MpOptionDTO
 from ..model.mp_option_model import MpOptionModel
 
 
-class MpOptionService(BaseService[MpOptionModel]):
+class MpOptionService(BaseService[MpOptionModel, MpOptionDTO]):
     def __init__(self):
         """
         初始化服务实例

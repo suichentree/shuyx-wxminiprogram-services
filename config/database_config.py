@@ -4,8 +4,7 @@ pymysql.install_as_MySQLdb()
 # 导入sqlalchemy框架中的各个工具
 from contextlib import contextmanager
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
 # mysql数据库的连接URL
 MYSQL_DATABASE_URL = "mysql+pymysql://root:123456@localhost:33306/shuyx_db"
@@ -18,9 +17,8 @@ myEngine = create_engine(MYSQL_DATABASE_URL,
     )
 
 # 创建统一基类
-myBaseModel = declarative_base()
-
-
+class myBaseModel(DeclarativeBase):
+    pass
 
 # 创建会话对象mySession
 mySession = sessionmaker(autocommit=False, autoflush=False, bind=myEngine, expire_on_commit=False)

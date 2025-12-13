@@ -1,9 +1,10 @@
 from .base_service import BaseService
 from ..dao.mp_question_dao import MpQuestionDao
+from ..dto.mp_question_dto import MpQuestionDTO
 from ..model.mp_question_model import MpQuestionModel
 
 
-class MpQuestionService(BaseService[MpQuestionModel]):
+class MpQuestionService(BaseService[MpQuestionModel, MpQuestionDTO]):
     """
     继承自通用服务基类  提供相关的业务逻辑处理
     """

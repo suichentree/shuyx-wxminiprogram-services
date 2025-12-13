@@ -2,7 +2,9 @@ from .base_service import BaseService
 from ..dao.mp_user_option_dao import MpUserOptionDao
 from ..model.mp_user_option_model import MpUserOptionModel
 
-class MpUserOptionService(BaseService[MpUserOptionModel]):
+from ..dto.mp_user_option_dto import MpUserOptionDTO
+
+class MpUserOptionService(BaseService[MpUserOptionModel, MpUserOptionDTO]):
     def __init__(self):
         """
         初始化服务实例

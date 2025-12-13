@@ -1,6 +1,8 @@
 from typing import List, Optional, Generic, TypeVar, Type, Dict, Any
 from pydantic import BaseModel
+from sqlalchemy import asc, desc
 from sqlalchemy.orm import DeclarativeBase
+from datetime import datetime
 
 # 导入数据库会话工厂
 from config.database_config import session_maker
@@ -25,12 +27,56 @@ class BaseDao(Generic[ModelType, DtoType]):
         self.model = model
         self.dto = dto
 
-    def get_page_list_by_filters(self, page_size: int, page_num: int, filters: DtoType = None) -> List[DtoType]:
+    def _model_to_dict__(self, model: ModelType) -> Dict[str, Any]:
+        """
+        将SQLAlchemy模型实例转换为字典，自动将SQLAlchemy模型实例中datetime类型的字段转换为字符串
+        """
+        model_dict = {}
+        for column in model.__table__.columns:
+            value = getattr(model, column.name)
+            # 检查是否为datetime类型
+            if isinstance(value, datetime):
+                # 将datetime类型的字段转换为字符串
+                model_dict[column.name] = value.isoformat()
+            else:
+                # 其他类型直接赋值
+                model_dict[column.name] = value
+        return model_dict
+
+    def __dto_to_model__(self, dto: DtoType) -> ModelType:
+        """
+        将Pydantic模型实例 转换为 SQLAlchemy模型实例
+            输入: Pydantic 模型实例
+            输出: SQLAlchemy 模型实例
+        """
+        # 先将DTO转换为字典，过滤出非None值的字段
+        model_data = dto.model_dump(exclude_unset=True, exclude_none=True)
+        # 然后查询出SQLAlchemy模型的字段
+        model_fields = {col.name for col in self.model.__table__.columns}
+        # 根据SQLAlchemy模型字段，过滤出DTO中存在的字段
+        model_data = {k: v for k, v in model_data.items() if k in model_fields}
+        # 开始转换
+        return self.model(**model_data)
+
+    def __model_to_dto__(self, model: ModelType) -> DtoType:
+        """
+        将SQLAlchemy模型实例 转换为 Pydantic模型实例
+            输入: SQLAlchemy 模型实例
+            输出: Pydantic 模型实例
+        """
+        # 先将SQLAlchemy模型实例转换为字典
+        model_dict = self._model_to_dict__(model)
+        # 然后使用model_validate方法将字典转换为Pydantic模型实例
+        return self.dto.model_validate(model_dict)
+
+
+    def get_page_list_by_filters(self, page_size: int, page_num: int, filters: DtoType = None, sort_by: List[str] = None) -> List[DtoType]:
         """
         获取分页列表
             page_size: 每页大小
             page_num: 页码
-            filters: 查询条件DTO
+            filters: 查询条件DTO。例如 XXXDTO(field1=value1, field2=value2)
+            sort_by: 排序字段，是一个字符串列表。例如 ["field1", "-field2"] 表示按field1升序，按field2降序排序。
         """
         with session_maker() as db_session:
             query = db_session.query(self.model)
@@ -43,17 +89,73 @@ class BaseDao(Generic[ModelType, DtoType]):
                     if hasattr(self.model, field) and value is not None:
                         query = query.filter(getattr(self.model, field) == value)
 
+            # 动态构建排序条件
+            if sort_by:
+                # 遍历排序字段列表
+                for sort_field in sort_by:
+                    # 判断排序方向
+                    if sort_field.startswith('-'):
+                        # 降序
+                        field_name = sort_field[1:]
+                        if hasattr(self.model, field_name):
+                            query = query.order_by(desc(getattr(self.model, field_name)))
+                    else:
+                        # 升序
+                        if hasattr(self.model, sort_field):
+                            query = query.order_by(asc(getattr(self.model, sort_field)))
+
             # 计算分页偏移量
             offset_value = (page_num - 1) * page_size
             # 获取当前分页数据
             records = query.offset(offset_value).limit(page_size).all()
-            # 转换为DTO列表数据,并返回
-            return [self.dto.model_validate(record) for record in records]
+            # 通过__model_to_dto__方法将sqlAlchemy模型实例转换为DTO实例,并返回
+            return [self.__model_to_dto__(record) for record in records]
+
+
+    def get_page_list_by_filters_as_dict(self, page_size: int, page_num: int, filters: Dict = None, sort_by: List[str] = None) -> List[DtoType]:
+        """
+        获取分页列表（dict形式）
+            page_size: 每页大小
+            page_num: 页码
+            filters: 查询条件字典。例如 {"filed1": value1, "filed2": value2}
+            sort_by: 排序字段，是一个字符串列表。例如 ["field1", "-field2"] 表示按field1升序，按field2降序排序。
+        """
+        with session_maker() as db_session:
+            query = db_session.query(self.model)
+
+            # 动态构建查询条件
+            if filters:
+                for field, value in filters.items():
+                    if hasattr(self.model, field) and value is not None:
+                        query = query.filter(getattr(self.model, field) == value)
+
+            # 动态构建排序条件
+            if sort_by:
+                # 遍历排序字段列表
+                for sort_field in sort_by:
+                    # 判断排序方向
+                    if sort_field.startswith('-'):
+                        # 降序
+                        field_name = sort_field[1:]
+                        if hasattr(self.model, field_name):
+                            query = query.order_by(desc(getattr(self.model, field_name)))
+                    else:
+                        # 升序
+                        if hasattr(self.model, sort_field):
+                            query = query.order_by(asc(getattr(self.model, sort_field)))
+
+            # 计算分页偏移量
+            offset_value = (page_num - 1) * page_size
+            # 获取当前分页数据
+            records = query.offset(offset_value).limit(page_size).all()
+            # 通过__model_to_dto__方法将sqlAlchemy模型实例转换为DTO实例,并返回
+            return [self.__model_to_dto__(record) for record in records]
+
 
     def get_total_by_filters(self, filters: DtoType = None) -> int:
         """
-        获取记录总数
-            filters: 查询条件DTO
+        获取记录总数（dto形式）
+            filters: 查询条件DTO。例如 XXXDTO(filed1=value1, filed2=value2)
         """
         with session_maker() as db_session:
             query = db_session.query(self.model)
@@ -68,6 +170,22 @@ class BaseDao(Generic[ModelType, DtoType]):
 
             return query.count()
 
+    def get_total_by_filters_as_dict(self, filters: Dict = None) -> int:
+        """
+        获取记录总数（dict形式）
+            filters: 查询条件字典。例如 {"filed1": value1, "filed2": value2}
+        """
+        with session_maker() as db_session:
+            query = db_session.query(self.model)
+
+            # 动态构建查询条件
+            if filters:
+                for field, value in filters.items():
+                    if hasattr(self.model, field) and value is not None:
+                        query = query.filter(getattr(self.model, field) == value)
+
+            return query.count()
+
     def get_by_id(self, id: int) -> DtoType:
         """
         根据ID获取单条记录
@@ -76,13 +194,14 @@ class BaseDao(Generic[ModelType, DtoType]):
         with session_maker() as db_session:
             # 查询单条记录
             record = db_session.query(self.model).filter(self.model.id == id).first()
-            # 转换为DTO数据,并返回
-            return self.dto.model_validate(record) if record else None
+            # 通过__model_to_dto__方法将sqlAlchemy模型实例转换为DTO实例,并返回DTO数据
+            return self.__model_to_dto__(record) if record else None
 
-    def get_list_by_filters(self, filters: DtoType = None) -> List[DtoType]:
+    def get_list_by_filters(self, filters: DtoType = None,sort_by: List[str] = None) -> List[DtoType]:
         """
-        根据条件查询列表
-            filters: 查询条件DTO
+        根据条件查询列表（dto形式）
+            filters: 查询条件DTO，内部会将其转换为字典形式。例如 XXXDTO(filed1=value1, filed2=value2)
+            sort_by: 排序字段，是一个字符串列表。例如 ["field1", "-field2"] 表示按field1升序，按field2降序排序。
         """
         with session_maker() as db_session:
             query = db_session.query(self.model)
@@ -95,13 +214,68 @@ class BaseDao(Generic[ModelType, DtoType]):
                     if hasattr(self.model, field) and value is not None:
                         query = query.filter(getattr(self.model, field) == value)
 
+            # 动态构建排序条件
+            if sort_by:
+                # 遍历排序字段列表
+                for sort_field in sort_by:
+                    # 判断排序方向
+                    if sort_field.startswith('-'):
+                        # 降序
+                        field_name = sort_field[1:]
+                        if hasattr(self.model, field_name):
+                            query = query.order_by(desc(getattr(self.model, field_name)))
+                    else:
+                        # 升序
+                        if hasattr(self.model, sort_field):
+                            query = query.order_by(asc(getattr(self.model, sort_field)))
+
+            # 执行查询并获取所有记录
             records = query.all()
-            return [self.dto.model_validate(record) for record in records]
+            # 通过__model_to_dto__方法将sqlAlchemy模型实例转换为DTO实例,并返回DTO列表数据
+            return [self.__model_to_dto__(record) for record in records]
+
+
+    def get_list_by_filters_as_dict(self, filters: Dict = None,sort_by: List[str] = None) -> List[DtoType]:
+        """
+        根据条件查询列表（dict形式）
+            filters: 查询条件字典，例如 {"field1": value1, "field2": value2}
+            sort_by: 排序字段，是一个字符串列表。例如 ["field1", "-field2"] 表示按field1升序，按field2降序排序。
+        """
+        with session_maker() as db_session:
+            query = db_session.query(self.model)
+
+            # 动态构建查询条件
+            if filters:
+                for field, value in filters.items():
+                    if hasattr(self.model, field) and value is not None:
+                        query = query.filter(getattr(self.model, field) == value)
+
+            # 动态构建排序条件
+            if sort_by:
+                # 遍历排序字段列表
+                for sort_field in sort_by:
+                    # 判断排序方向
+                    if sort_field.startswith('-'):
+                        # 降序
+                        field_name = sort_field[1:]
+                        if hasattr(self.model, field_name):
+                            query = query.order_by(desc(getattr(self.model, field_name)))
+                    else:
+                        # 升序
+                        if hasattr(self.model, sort_field):
+                            query = query.order_by(asc(getattr(self.model, sort_field)))
+
+            # 执行查询并获取所有记录
+            records = query.all()
+            # 通过__model_to_dto__方法将sqlAlchemy模型实例转换为DTO实例,并返回DTO列表数据
+            return [self.__model_to_dto__(record) for record in records]
+
 
     def get_one_by_filters(self, filters: DtoType = None) -> DtoType:
         """
-        根据条件获取单条记录
-            filters: 查询条件DTO
+        根据条件获取单条记录（dto形式）
+            filters: 查询条件DTO，内部会将其转换为字典形式，然后再根据字典构建查询条件。
+            例如 XXXDTO(field1=value1, field2=value2)
         """
         with session_maker() as db_session:
             query = db_session.query(self.model)
@@ -116,11 +290,34 @@ class BaseDao(Generic[ModelType, DtoType]):
 
             # 执行查询并获取第一条记录
             record = query.first()
-            return self.dto.model_validate(record) if record else None
+            # 通过__model_to_dto__方法将sqlAlchemy模型实例转换为DTO实例,并返回DTO数据
+            return self.__model_to_dto__(record) if record else None
+
+
+    def get_one_by_filters_as_dict(self, filters: Dict=None) -> DtoType:
+        """
+        根据条件获取单条记录（dict形式）
+            filters: 查询条件字典 接收字典数据。
+            例如 {"table_field1": value1, "table_field2": value2}
+        """
+        with session_maker() as db_session:
+            query = db_session.query(self.model)
+
+            # 动态构建查询条件
+            if filters:
+                for field, value in filters.items():
+                    if hasattr(self.model, field) and value is not None:
+                        query = query.filter(getattr(self.model, field) == value)
+
+            # 执行查询并获取第一条记录
+            record = query.first()
+            # 通过__model_to_dto__方法将sqlAlchemy模型实例转换为DTO实例,并返回DTO数据
+            return self.__model_to_dto__(record) if record else None
+
 
     def update_by_id(self, id: int, update_data: DtoType) -> bool:
         """
-        根据ID更新信息
+        根据ID更新信息（dto形式）
             id: 要更新的记录ID
             update_date: 更新数据DTO
         """
@@ -139,6 +336,27 @@ class BaseDao(Generic[ModelType, DtoType]):
             db_session.commit()  # 显式提交事务
             return affected_rows > 0
 
+    def update_by_id_as_dict(self, id: int, update_data: Dict=None) -> bool:
+        """
+        根据ID更新信息（dict形式）
+            id: 要更新的记录ID
+            data: 更新数据字典
+        """
+        with session_maker() as db_session:
+            # 遍历data，过滤出模型中存在的字段
+            model_fields = {col.name for col in self.model.__table__.columns}
+            new_update_data = {k: v for k, v in update_data.items() if k in model_fields and v is not None}
+
+            if not new_update_data:
+                return True  # 没有需要更新的字段，视为成功
+
+            # 执行更新并获取受影响的行数
+            # 如果受影响的行数为0，说明记录不存在。大于0说明更新成功
+            affected_rows = db_session.query(self.model).filter(self.model.id == id).update(update_data)
+            db_session.commit()  # 显式提交事务
+            return affected_rows > 0
+
+
     def delete_by_id(self, id: int) -> bool:
         """
         根据ID删除记录
@@ -151,11 +369,14 @@ class BaseDao(Generic[ModelType, DtoType]):
             db_session.commit()  # 显式提交事务
             return affected_rows > 0
 
-    def add(self, data: DtoType) -> DtoType:
+    def add(self, data: DtoType=None) -> DtoType:
         """
-        添加新记录
+        添加新记录(DTO形式)
             data: 添加数据DTO
         """
+        if data is None:
+            return None
+
         with session_maker() as db_session:
             # 遍历data，过滤出模型中存在的字段
             model_fields = {col.name for col in self.model.__table__.columns}
@@ -166,7 +387,25 @@ class BaseDao(Generic[ModelType, DtoType]):
             instance = self.model(**model_data)
             db_session.add(instance)
             db_session.commit()  # 显式提交事务
-            # 将模型实例转换为DTO返回
-            return self.dto.model_validate(instance)
+            # 将sqlAlchemy模型实例转换为DTO返回，会返回包含ID的完整DTO数据
+            return self.__model_to_dto__(instance)
 
+    def add_as_dict(self, data: Dict=None) -> DtoType:
+        """
+        添加新记录(字典形式)
+            接收字典数据，返回DTO实例
+        """
+        if data is None:
+            return None
 
+        with session_maker() as db_session:
+            # 遍历data，过滤出模型中存在的字段
+            model_fields = {col.name for col in self.model.__table__.columns}
+            model_data = {k: v for k, v in data.items() if k in model_fields}
+
+            # 将字典数据转换为模型实例
+            instance = self.model(**model_data)
+            db_session.add(instance)
+            db_session.commit()  # 显式提交事务
+            # 将sqlAlchemy模型实例转换为DTO返回，会返回包含ID的完整DTO数据
+            return self.__model_to_dto__(instance)

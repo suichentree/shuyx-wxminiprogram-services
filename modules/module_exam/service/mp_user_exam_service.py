@@ -1,8 +1,9 @@
 from .base_service import BaseService
 from ..dao.mp_user_exam_dao import MpUserExamDao
+from ..dto.mp_user_exam_dto import MpUserExamDTO
 from ..model.mp_user_exam_model import MpUserExamModel
 
-class MpUserExamService(BaseService[MpUserExamModel]):
+class MpUserExamService(BaseService[MpUserExamModel, MpUserExamDTO]):
     def __init__(self):
         """
         初始化服务实例
