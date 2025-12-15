@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel
 from typing import Optional
 
@@ -9,8 +11,8 @@ class MpUserExamDTO(BaseModel):
     exam_id:Optional[int] = None
     page_no:Optional[int] = None
     score:Optional[int] = None
-    create_time:Optional[str] = None
-    finish_time:Optional[str] = None
+    create_time:Optional[datetime] = None
+    finish_time:Optional[datetime] = None
 
 
 

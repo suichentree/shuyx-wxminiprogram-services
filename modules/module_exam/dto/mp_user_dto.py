@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel
 from typing import Optional
 
@@ -16,9 +18,9 @@ class MpUserDTO(BaseModel):
     gender:Optional[int] = None
     email:Optional[str] = None
     login_count:Optional[int] = None
-    last_login_time:Optional[str] = None
-    is_admin:Optional[int] = None
-    create_time:Optional[str] = None
+    is_admin: Optional[int] = None
+    last_login_time:Optional[datetime] = None
+    create_time:Optional[datetime] = None
 
 
 

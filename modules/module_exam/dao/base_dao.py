@@ -15,7 +15,8 @@ class BaseDao(Generic[ModelType, DtoType]):
     """
     基础数据访问对象类
     提供通用的CRUD操作，专注于数据访问层，不包含业务逻辑、日志和异常处理
-    BaseDao类的各个主要方法都是接收并返回DTO类型的参数，而不是模型实例。
+
+    提供各种方法，包括新增、删除、更新、查询等操作。方法参数主要分为两种。字典类型 和 Pydantic模型实例。
     """
 
     def __init__(self, model: Type[ModelType], dto: Type[DtoType]):
@@ -87,7 +88,7 @@ class BaseDao(Generic[ModelType, DtoType]):
                 filters_dict = filters.model_dump(exclude_unset=True, exclude_none=True)
                 for field, value in filters_dict.items():
                     if hasattr(self.model, field) and value is not None:
-                        query = query.filter(getattr(self.model, field) == value)
+                            query = query.filter(getattr(self.model, field) == value)
 
             # 动态构建排序条件
             if sort_by:
@@ -127,7 +128,7 @@ class BaseDao(Generic[ModelType, DtoType]):
             if filters:
                 for field, value in filters.items():
                     if hasattr(self.model, field) and value is not None:
-                        query = query.filter(getattr(self.model, field) == value)
+                            query = query.filter(getattr(self.model, field) == value)
 
             # 动态构建排序条件
             if sort_by:
@@ -166,7 +167,7 @@ class BaseDao(Generic[ModelType, DtoType]):
                 filters_dict = filters.model_dump(exclude_unset=True, exclude_none=True)
                 for field, value in filters_dict.items():
                     if hasattr(self.model, field) and value is not None:
-                        query = query.filter(getattr(self.model, field) == value)
+                            query = query.filter(getattr(self.model, field) == value)
 
             return query.count()
 
@@ -212,7 +213,7 @@ class BaseDao(Generic[ModelType, DtoType]):
                 filters_dict = filters.model_dump(exclude_unset=True, exclude_none=True)
                 for field, value in filters_dict.items():
                     if hasattr(self.model, field) and value is not None:
-                        query = query.filter(getattr(self.model, field) == value)
+                            query = query.filter(getattr(self.model, field) == value)
 
             # 动态构建排序条件
             if sort_by:
@@ -248,7 +249,7 @@ class BaseDao(Generic[ModelType, DtoType]):
             if filters:
                 for field, value in filters.items():
                     if hasattr(self.model, field) and value is not None:
-                        query = query.filter(getattr(self.model, field) == value)
+                            query = query.filter(getattr(self.model, field) == value)
 
             # 动态构建排序条件
             if sort_by:
@@ -286,7 +287,7 @@ class BaseDao(Generic[ModelType, DtoType]):
                 filters_dict = filters.model_dump(exclude_unset=True, exclude_none=True)
                 for field, value in filters_dict.items():
                     if hasattr(self.model, field) and value is not None:
-                        query = query.filter(getattr(self.model, field) == value)
+                            query = query.filter(getattr(self.model, field) == value)
 
             # 执行查询并获取第一条记录
             record = query.first()
@@ -307,7 +308,7 @@ class BaseDao(Generic[ModelType, DtoType]):
             if filters:
                 for field, value in filters.items():
                     if hasattr(self.model, field) and value is not None:
-                        query = query.filter(getattr(self.model, field) == value)
+                            query = query.filter(getattr(self.model, field) == value)
 
             # 执行查询并获取第一条记录
             record = query.first()
@@ -352,7 +353,7 @@ class BaseDao(Generic[ModelType, DtoType]):
 
             # 执行更新并获取受影响的行数
             # 如果受影响的行数为0，说明记录不存在。大于0说明更新成功
-            affected_rows = db_session.query(self.model).filter(self.model.id == id).update(update_data)
+            affected_rows = db_session.query(self.model).filter(self.model.id == id).update(new_update_data)
             db_session.commit()  # 显式提交事务
             return affected_rows > 0
 

@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel
 from typing import Optional
 
@@ -9,9 +11,9 @@ class MpQuestionDTO(BaseModel):
     name:Optional[str] = None
     type:Optional[str] = None
     type_id:Optional[int] = None
-    is_ban:Optional[str] = None
-    status:Optional[str] = None
-    create_time:Optional[str] = None
+    is_ban:Optional[int] = None
+    status:Optional[int] = None
+    create_time:Optional[datetime] = None
 
 
 

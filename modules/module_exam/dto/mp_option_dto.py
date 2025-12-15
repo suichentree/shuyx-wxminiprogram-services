@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel
 from typing import Optional
 
@@ -7,10 +9,10 @@ class MpOptionDTO(BaseModel):
     id:Optional[int] = None          # Optional[int] = None 表示类型可以是int,也可以是 None，默认值为 None
     question_id:Optional[int] = None
     content:Optional[str] = None
-    score:Optional[str] = None
-    is_ban:Optional[str] = None
-    status:Optional[str] = None
-    create_time:Optional[str] = None
+    score:Optional[int] = None
+    is_ban:Optional[int] = None
+    status:Optional[int] = None
+    create_time:Optional[datetime] = None
 
 
 

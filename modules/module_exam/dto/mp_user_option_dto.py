@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from pydantic import BaseModel
 from typing import Optional
 
@@ -12,7 +14,7 @@ class MpUserOptionDTO(BaseModel):
     question_id:Optional[int] = None
     is_duoxue:Optional[int] = None
     is_right:Optional[int] = None
-    create_time:Optional[str] = None
+    create_time:Optional[datetime] = None
 
 
 

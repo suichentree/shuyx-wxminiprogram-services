@@ -20,6 +20,7 @@ class BaseService(Generic[ModelType, DtoType]):
         """
         self.dao = dao_instance
 
+
     def get_page_list_by_filters(self, page_num: int = 1, page_size: int = 10, filters: DtoType = None,sort_by: List[str] = None) -> List[DtoType]:
         """
         获取分页数据（DTO形式）
