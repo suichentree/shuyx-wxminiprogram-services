@@ -1,13 +1,13 @@
-from typing import List, Optional, Generic, TypeVar, Type, Dict, Any
+from typing import List, Optional, Generic, TypeVar, Type, Dict, Any, Callable
 from pydantic import BaseModel
-from sqlalchemy import asc, desc
+from sqlalchemy import asc, desc, text
 from sqlalchemy.orm import DeclarativeBase
 from datetime import datetime
 
 # 导入数据库会话工厂
 from config.database_config import session_maker
 
-# 定义模型类型变量
+# 定义泛型
 ModelType = TypeVar("ModelType", bound=DeclarativeBase)
 DtoType = TypeVar("DtoType", bound=BaseModel)
 
@@ -18,7 +18,6 @@ class BaseDao(Generic[ModelType, DtoType]):
 
     提供各种方法，包括新增、删除、更新、查询等操作。方法参数主要分为两种。字典类型 和 Pydantic模型实例。
     """
-
     def __init__(self, model: Type[ModelType], dto: Type[DtoType]):
         """
         初始化数据访问对象
@@ -171,22 +170,6 @@ class BaseDao(Generic[ModelType, DtoType]):
 
             return query.count()
 
-    def get_total_by_filters_as_dict(self, filters: Dict = None) -> int:
-        """
-        获取记录总数（dict形式）
-            filters: 查询条件字典。例如 {"filed1": value1, "filed2": value2}
-        """
-        with session_maker() as db_session:
-            query = db_session.query(self.model)
-
-            # 动态构建查询条件
-            if filters:
-                for field, value in filters.items():
-                    if hasattr(self.model, field) and value is not None:
-                        query = query.filter(getattr(self.model, field) == value)
-
-            return query.count()
-
     def get_by_id(self, id: int) -> DtoType:
         """
         根据ID获取单条记录
@@ -235,43 +218,6 @@ class BaseDao(Generic[ModelType, DtoType]):
             # 通过__model_to_dto__方法将sqlAlchemy模型实例转换为DTO实例,并返回DTO列表数据
             return [self.__model_to_dto__(record) for record in records]
 
-
-    def get_list_by_filters_as_dict(self, filters: Dict = None,sort_by: List[str] = None) -> List[DtoType]:
-        """
-        根据条件查询列表（dict形式）
-            filters: 查询条件字典，例如 {"field1": value1, "field2": value2}
-            sort_by: 排序字段，是一个字符串列表。例如 ["field1", "-field2"] 表示按field1升序，按field2降序排序。
-        """
-        with session_maker() as db_session:
-            query = db_session.query(self.model)
-
-            # 动态构建查询条件
-            if filters:
-                for field, value in filters.items():
-                    if hasattr(self.model, field) and value is not None:
-                            query = query.filter(getattr(self.model, field) == value)
-
-            # 动态构建排序条件
-            if sort_by:
-                # 遍历排序字段列表
-                for sort_field in sort_by:
-                    # 判断排序方向
-                    if sort_field.startswith('-'):
-                        # 降序
-                        field_name = sort_field[1:]
-                        if hasattr(self.model, field_name):
-                            query = query.order_by(desc(getattr(self.model, field_name)))
-                    else:
-                        # 升序
-                        if hasattr(self.model, sort_field):
-                            query = query.order_by(asc(getattr(self.model, sort_field)))
-
-            # 执行查询并获取所有记录
-            records = query.all()
-            # 通过__model_to_dto__方法将sqlAlchemy模型实例转换为DTO实例,并返回DTO列表数据
-            return [self.__model_to_dto__(record) for record in records]
-
-
     def get_one_by_filters(self, filters: DtoType = None) -> DtoType:
         """
         根据条件获取单条记录（dto形式）
@@ -286,27 +232,6 @@ class BaseDao(Generic[ModelType, DtoType]):
                 # 将DTO转换为字典，过滤出非None值的字段
                 filters_dict = filters.model_dump(exclude_unset=True, exclude_none=True)
                 for field, value in filters_dict.items():
-                    if hasattr(self.model, field) and value is not None:
-                            query = query.filter(getattr(self.model, field) == value)
-
-            # 执行查询并获取第一条记录
-            record = query.first()
-            # 通过__model_to_dto__方法将sqlAlchemy模型实例转换为DTO实例,并返回DTO数据
-            return self.__model_to_dto__(record) if record else None
-
-
-    def get_one_by_filters_as_dict(self, filters: Dict=None) -> DtoType:
-        """
-        根据条件获取单条记录（dict形式）
-            filters: 查询条件字典 接收字典数据。
-            例如 {"table_field1": value1, "table_field2": value2}
-        """
-        with session_maker() as db_session:
-            query = db_session.query(self.model)
-
-            # 动态构建查询条件
-            if filters:
-                for field, value in filters.items():
                     if hasattr(self.model, field) and value is not None:
                             query = query.filter(getattr(self.model, field) == value)
 
@@ -336,27 +261,6 @@ class BaseDao(Generic[ModelType, DtoType]):
             affected_rows = db_session.query(self.model).filter(self.model.id == id).update(new_update_data)
             db_session.commit()  # 显式提交事务
             return affected_rows > 0
-
-    def update_by_id_as_dict(self, id: int, update_data: Dict=None) -> bool:
-        """
-        根据ID更新信息（dict形式）
-            id: 要更新的记录ID
-            data: 更新数据字典
-        """
-        with session_maker() as db_session:
-            # 遍历data，过滤出模型中存在的字段
-            model_fields = {col.name for col in self.model.__table__.columns}
-            new_update_data = {k: v for k, v in update_data.items() if k in model_fields and v is not None}
-
-            if not new_update_data:
-                return True  # 没有需要更新的字段，视为成功
-
-            # 执行更新并获取受影响的行数
-            # 如果受影响的行数为0，说明记录不存在。大于0说明更新成功
-            affected_rows = db_session.query(self.model).filter(self.model.id == id).update(new_update_data)
-            db_session.commit()  # 显式提交事务
-            return affected_rows > 0
-
 
     def delete_by_id(self, id: int) -> bool:
         """
@@ -391,22 +295,72 @@ class BaseDao(Generic[ModelType, DtoType]):
             # 将sqlAlchemy模型实例转换为DTO返回，会返回包含ID的完整DTO数据
             return self.__model_to_dto__(instance)
 
-    def add_as_dict(self, data: Dict=None) -> DtoType:
+    def execute_raw_sql(self, sql: str, params: Dict = None) -> bool:
         """
-        添加新记录(字典形式)
-            接收字典数据，返回DTO实例
-        """
-        if data is None:
-            return None
+        执行原生SQL语句（适用于INSERT、UPDATE、DELETE等）
+            sql: 原生SQL语句
+            params: SQL参数（可选）
+            返回：受影响的行数
 
+        调用示例
+        sql = "INSERT INTO users (name, age) VALUES (:name, :age)"
+        params = {"name": "张三", "age": 30}
+        affected_rows = execute_raw_sql(sql, params)
+        """
         with session_maker() as db_session:
-            # 遍历data，过滤出模型中存在的字段
-            model_fields = {col.name for col in self.model.__table__.columns}
-            model_data = {k: v for k, v in data.items() if k in model_fields}
+            result = db_session.execute(sql, params or {})
+            db_session.commit()
+            return result.rowcount > 0
 
-            # 将字典数据转换为模型实例
-            instance = self.model(**model_data)
-            db_session.add(instance)
-            db_session.commit()  # 显式提交事务
-            # 将sqlAlchemy模型实例转换为DTO返回，会返回包含ID的完整DTO数据
-            return self.__model_to_dto__(instance)
+    def query_raw_sql(self, sql: str, params: Dict = None) -> Any:
+        """
+        执行原生SQL查询并返回查询结果
+            sql: 原生SQL语句
+            params: SQL参数（可选）
+
+        调用示例
+        sql = "SELECT * FROM users WHERE age > :age"
+        params = {"age": 18}
+        results = query_raw_sql(sql, params)
+        """
+        with session_maker() as db_session:
+            result = db_session.execute(text(sql), params or {})
+
+            # 转换为DTO
+            # 处理列表类型结果
+            if isinstance(result, list):
+                return [self.__model_to_dto__(record) for record in result]
+            # 处理单个模型实例
+            elif isinstance(result, self.model):
+                return self.__model_to_dto__(result) if result else None
+
+    def session_execute_query(self, query_func):
+        """
+        session_execute_query方法用于执行自定义查询操作，可以直接使用sqlalchemy的原生查询方法
+        参数:
+            query_func: 接收db_session的查询函数
+        返回:
+            查询结果
+
+        调用示例
+        def get_all():
+            return session_execute_query(lambda db_session: db_session.query(self.model).all())
+        """
+        with session_maker() as db_session:
+            try:
+                print(query_func)
+                result = query_func(db_session)
+                # 当为查询操作时，此处不会有变更需要提交。其他操作时需要显式调用commit()方法提交事务
+                # 这里只是为了符合事务的完整性，避免后续操作受到影响
+                db_session.commit()
+
+                # 转换为DTO
+                # 处理列表类型结果
+                if isinstance(result, list):
+                    return [self.__model_to_dto__(record) for record in result]
+                # 处理单个模型实例
+                elif isinstance(result, self.model):
+                    return self.__model_to_dto__(result) if result else None
+            except Exception as e:
+                db_session.rollback()
+                raise

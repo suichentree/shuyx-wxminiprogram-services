@@ -7,11 +7,14 @@ from modules.module_exam.dto.mp_option_dto import MpOptionDTO
 from modules.module_exam.dto.mp_question_dto import MpQuestionDTO
 from modules.module_exam.dto.mp_user_exam_dto import MpUserExamDTO
 from modules.module_exam.dto.mp_user_option_dto import MpUserOptionDTO
+from modules.module_exam.model.mp_option_model import MpOptionModel
+from modules.module_exam.model.mp_user_exam_model import MpUserExamModel
 from modules.module_exam.service.mp_exam_service import MpExamService
 from modules.module_exam.service.mp_option_service import MpOptionService
 from modules.module_exam.service.mp_question_service import MpQuestionService
 from modules.module_exam.service.mp_user_exam_service import MpUserExamService
 from modules.module_exam.service.mp_user_option_service import MpUserOptionService
+from modules.module_exam.service.base_service import BaseService
 from utils.response_util import ResponseUtil
 
 # 创建路由实例
@@ -22,7 +25,6 @@ MpOptionService_instance = MpOptionService()
 MpQuestionService_instance = MpQuestionService()
 MpUserExamService_instance = MpUserExamService()
 MpUserOptionService_instance = MpUserOptionService()
-
 
 """
 获取测试列表信息
@@ -95,8 +97,12 @@ def danxueAnswer(userId = Body(None),examId = Body(None),questionId = Body(None)
     option_result:MpOptionDTO = MpOptionService_instance.get_by_id(id=optionId)
     # 根据exam_id查询某个测试的题目个数
     question_count:int = MpQuestionService_instance.get_total_by_filters(filters=MpQuestionDTO(exam_id=examId))
+
     # 查询用户是否有没做完的测试记录
-    user_exam_result:MpUserExamDTO = MpUserExamService_instance.get_one_by_filters(filters=MpUserExamDTO(user_id=userId, exam_id=examId,finish_time=None))
+    user_exam_result: MpUserExamDTO = MpUserExamService_instance.session_execute_query(
+        lambda db_session: db_session.query(MpUserExamModel).filter_by(user_id=userId, exam_id=examId, finish_time = None).first()
+    )
+
     if user_exam_result is None:
         logger.info(f'用户 userId = {userId}, examId = {examId}, 无未做完测试，创建新的测试记录')
         # 创建新的测试记录
@@ -116,7 +122,6 @@ def danxueAnswer(userId = Body(None),examId = Body(None),questionId = Body(None)
             user_exam_result.finish_time = datetime.now()
         # 更新测试记录
         MpUserExamService_instance.update_by_id(id=user_exam_result.id,update_data=user_exam_result)
-
 
     # 创建新的用户选项信息
     mpUserOption = MpUserOptionDTO(
@@ -139,16 +144,15 @@ def danxueAnswer(userId = Body(None),examId = Body(None),questionId = Body(None)
 def duoxue_Answer(userId = Body(None),examId = Body(None),questionId = Body(None),optionIds:List[int] = Body(None),pageNo = Body(None)):
     logger.info(f'/mp/exam/duoxue_Answer, user_id = {userId}, exam_id = {examId}, question_id = {questionId}, option_ids = {optionIds}, page_no = {pageNo}')
 
-    # 查询题目的正确选项集合
-    rightList:List[MpOptionDTO] = MpOptionService_instance.get_list_by_filters(filters=MpOptionDTO(
-        question_id=questionId,
-        score=1
-    ))
+    # 使用 session_execute_query 方法 查询题目的正确选项集合
+    rightList:List[MpOptionDTO] = MpOptionService_instance.session_execute_query(
+        lambda db_session: db_session.query(MpOptionModel).filter(MpOptionModel.question_id == questionId, MpOptionModel.score == 1).all()
+    )
     rightIds:List[int] = [item.id for item in rightList]
 
     # 将正确的选项集合与用户选项的数组进行对比
     isSame:bool
-    if rightIds == optionIds:
+    if set(rightIds) == set(optionIds):
         isSame = True
     else:
         isSame = False
@@ -160,12 +164,15 @@ def duoxue_Answer(userId = Body(None),examId = Body(None),questionId = Body(None
         exam_id=examId
     ))
 
-    # 查询用户是否有没做完的测试记录
-    mp_user_exam_result:MpUserExamDTO = MpUserExamService_instance.get_one_by_filters(filters=MpUserExamDTO(
-        user_id=userId,
-        exam_id=examId,
-        finish_time=None
-    ))
+
+    # 使用 session_execute_query 方法  查询用户是否有没做完的测试记录
+    mp_user_exam_result: MpUserExamDTO = MpUserExamService_instance.session_execute_query(
+        lambda db_session: db_session.query(MpUserExamModel).filter(
+            MpUserExamModel.user_id == userId,
+            MpUserExamModel.exam_id == int(examId),
+            MpUserExamModel.finish_time != None,
+        ).first()
+    )
 
     if mp_user_exam_result is None:
         logger.info(f'用户 userId = {userId}, examId = {examId}, 无未做完测试，创建新的测试记录')
@@ -180,7 +187,6 @@ def duoxue_Answer(userId = Body(None),examId = Body(None),questionId = Body(None
     else:
         logger.info(f'用户 userId = {userId}, examId = {examId}, 有未做完测试，继续测试')
         mp_user_exam_result.page_no = pageNo
-
         if isSame:
             mp_user_exam_result.score += mp_user_exam_result.score
         else:
@@ -215,16 +221,15 @@ def duoxue_Answer(userId = Body(None),examId = Body(None),questionId = Body(None
 def result(userId = Body(None),examId = Body(None)):
     logger.info(f'/mp/exam/result, user_id = {userId}, exam_id = {examId}')
 
-    # 查询用户最近一次完成的测试记录
     JsonArray = []
 
-    MpUserExamService_instance.test2()
+    # 查询用户最近一次完成的测试记录
+    last_finish_user_exam:MpUserExamDTO = MpUserExamService_instance.session_execute_query(
+        lambda db_session: db_session.query(MpUserExamModel).filter(
+            MpUserExamModel.user_id == userId, MpUserExamModel.exam_id == examId, MpUserExamModel.finish_time.isnot(None)
+        ).order_by(MpUserExamModel.finish_time.desc()).first()
+    )
 
-    last_finish_user_exam = MpUserExamService_instance.get_one_by_filters(filters=MpUserExamDTO(
-        user_id=userId,
-        exam_id=examId,
-        finish_time=True
-    ))
     if last_finish_user_exam is None:
         return ResponseUtil.error(data={"message": "用户未完成任何测试"})
     else:
@@ -234,13 +239,14 @@ def result(userId = Body(None),examId = Body(None)):
             "error_num": last_finish_user_exam.page_no - last_finish_user_exam.score,
         })
 
-    ## 查询全部测试记录
-    all_finish_user_exams = MpUserExamService_instance.get_list_by_filters(filters=MpUserExamDTO(
-        user_id=userId,
-        exam_id=examId,
-        finish_time=True
-    ))
     JsonArray2 = []
+    # 根据user_id和exam_id查询全部测试记录,并
+    all_finish_user_exams:List[MpUserExamDTO] = MpUserExamService_instance.session_execute_query(
+        lambda db_session: db_session.query(MpUserExamModel).filter(
+            MpUserExamModel.user_id == userId, MpUserExamModel.exam_id == examId, MpUserExamModel.finish_time.isnot(None)
+        ).all()
+    )
+
     for user_exam in all_finish_user_exams:
         JsonArray2.append({
             "sum_num": user_exam.page_no,
@@ -266,7 +272,13 @@ def history(userId = Body(None,embed=True)):
     # 遍历所有测试记录，将其转换为json格式
     for exam_id in examids:
         # 根据exam_id 查询对应的测试信息
-        last_user_exam:Optional[MpUserExamDTO] = MpUserExamService_instance.get_last_user_exam(userId=userId, exam_id=exam_id)
+
+        # 根据exam_id 和 user_id 查询用户是否有做过该测试
+        last_user_exam:Optional[MpUserExamDTO] = MpUserExamService_instance.session_execute_query(
+            lambda db_session: db_session.query(MpUserExamModel).filter(
+                MpUserExamModel.user_id == userId, MpUserExamModel.exam_id == exam_id, MpUserExamModel.finish_time is not None
+            ).order_by(MpUserExamModel.id.desc()).first()
+        )
         # 若用户有做过该测试，则取最近一次的测试记录
         if last_user_exam is not None:
             exam_info:Optional[MpExamDTO] = MpExamService_instance.get_by_id(last_user_exam.exam_id)
@@ -289,11 +301,7 @@ def questionAnalyse(userId = Body(None),examId = Body(None)):
     JsonArray = []
 
     # 获取最近一次的测试记录
-    last_finish_user_exam = MpUserExamService_instance.get_one_by_filters(filters=MpUserExamDTO(
-        user_id=userId,
-        exam_id=examId,
-        finish_time=True
-    ))
+    last_finish_user_exam:MpUserExamDTO = MpUserExamService_instance.find_last_one_finished_user_exam(user_id=userId, exam_id=examId)
     if last_finish_user_exam is None:
         return ResponseUtil.error(data={"message": "用户未完成任何测试"})
     else:
