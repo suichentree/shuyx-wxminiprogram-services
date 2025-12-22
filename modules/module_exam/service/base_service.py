@@ -10,7 +10,8 @@ DtoType = TypeVar('DtoType', bound=BaseModel)
 class BaseService(Generic[ModelType, DtoType]):
     """
     通用服务基类 提供CRUD操作的通用实现，作为DAO层和Controller层的中间层
-    各层之间使用DTO数据进行交互，实现强类型检查
+
+    其中session_execute_query方法用于执行自定义的高级查询操作，可以直接使用sqlalchemy的内置方法进行查询
     """
 
     def __init__(self, dao_instance):
@@ -91,37 +92,10 @@ class BaseService(Generic[ModelType, DtoType]):
         """
         return self.dao.delete_by_id(id)
 
-    def execute_raw_sql(self, sql: str, params: Dict = None) -> bool:
-        """
-        执行原生SQL语句（适用于INSERT、UPDATE、DELETE等）
-            sql: 原生SQL语句
-            params: SQL参数（可选）
-            返回：是否执行成功
-
-        调用示例
-        sql = "INSERT INTO users (name, age) VALUES (:name, :age)"
-        params = {"name": "张三", "age": 30}
-        affected_rows = execute_raw_sql(sql, params)
-        """
-        return self.dao.execute_raw_sql(sql, params)
-
-    def query_raw_sql(self, sql: str, params: Dict = None) -> Any:
-        """
-        执行原生SQL查询并返回查询结果
-            sql: 原生SQL语句
-            params: SQL参数（可选）
-
-        调用示例
-        sql = "SELECT * FROM users WHERE age > :age"
-        params = {"age": 18}
-        results = query_raw_sql(sql, params)
-        """
-        return self.dao.query_raw_sql(sql, params)
-
 
     def session_execute_query(self, query_func) -> Any:
         """
-        session_execute_query方法用于执行自定义查询操作，可以直接使用sqlalchemy的原生查询方法
+        session_execute_query方法用于执行自定义高级查询操作，可以直接使用sqlalchemy的原生查询方法
         参数:
             query_func: 接收lambda匿名函数。该函数内部使用db_session进行查询操作。
         返回:

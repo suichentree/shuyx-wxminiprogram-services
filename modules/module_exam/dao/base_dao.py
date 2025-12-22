@@ -16,7 +16,7 @@ class BaseDao(Generic[ModelType, DtoType]):
     基础数据访问对象类
     提供通用的CRUD操作，专注于数据访问层，不包含业务逻辑、日志和异常处理
 
-    提供各种方法，包括新增、删除、更新、查询等操作。方法参数主要分为两种。字典类型 和 Pydantic模型实例。
+    其中session_execute_query方法用于执行自定义的高级查询操作，可以直接使用sqlalchemy的内置方法进行查询
     """
     def __init__(self, model: Type[ModelType], dto: Type[DtoType]):
         """
@@ -295,48 +295,10 @@ class BaseDao(Generic[ModelType, DtoType]):
             # 将sqlAlchemy模型实例转换为DTO返回，会返回包含ID的完整DTO数据
             return self.__model_to_dto__(instance)
 
-    def execute_raw_sql(self, sql: str, params: Dict = None) -> bool:
-        """
-        执行原生SQL语句（适用于INSERT、UPDATE、DELETE等）
-            sql: 原生SQL语句
-            params: SQL参数（可选）
-            返回：受影响的行数
-
-        调用示例
-        sql = "INSERT INTO users (name, age) VALUES (:name, :age)"
-        params = {"name": "张三", "age": 30}
-        affected_rows = execute_raw_sql(sql, params)
-        """
-        with session_maker() as db_session:
-            result = db_session.execute(sql, params or {})
-            db_session.commit()
-            return result.rowcount > 0
-
-    def query_raw_sql(self, sql: str, params: Dict = None) -> Any:
-        """
-        执行原生SQL查询并返回查询结果
-            sql: 原生SQL语句
-            params: SQL参数（可选）
-
-        调用示例
-        sql = "SELECT * FROM users WHERE age > :age"
-        params = {"age": 18}
-        results = query_raw_sql(sql, params)
-        """
-        with session_maker() as db_session:
-            result = db_session.execute(text(sql), params or {})
-
-            # 转换为DTO
-            # 处理列表类型结果
-            if isinstance(result, list):
-                return [self.__model_to_dto__(record) for record in result]
-            # 处理单个模型实例
-            elif isinstance(result, self.model):
-                return self.__model_to_dto__(result) if result else None
 
     def session_execute_query(self, query_func):
         """
-        session_execute_query方法用于执行自定义查询操作，可以直接使用sqlalchemy的原生查询方法
+        session_execute_query方法用于执行自定义的高级查询操作，可以直接使用sqlalchemy的内置方法进行查询
         参数:
             query_func: 接收db_session的查询函数
         返回:

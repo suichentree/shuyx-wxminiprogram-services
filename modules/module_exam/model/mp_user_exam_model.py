@@ -1,5 +1,5 @@
 # 导入sqlalchemy框架中的相关字段
-from sqlalchemy import Column, Integer, String ,DateTime,CHAR,func
+from sqlalchemy import Column, Integer, String, DateTime, CHAR, func, Index
 # 导入公共基类
 from config.database_config import myBaseModel
 
@@ -16,3 +16,10 @@ class MpUserExamModel(myBaseModel):
     score = Column("score", Integer, nullable=False, comment='用户测试分数')
     create_time = Column("create_time",DateTime, comment='创建时间', default=func.now())
     finish_time = Column("finish_time", DateTime, comment='测试完成时间')
+
+    # 添加索引
+    __table_args__ = (
+        Index('index_id', 'id'),
+        Index('index_user_id', 'user_id'),
+        Index('index_exam_id', 'exam_id'),
+    )

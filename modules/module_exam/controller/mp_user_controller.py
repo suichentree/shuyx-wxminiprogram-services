@@ -4,8 +4,9 @@ from typing import Annotated, Optional
 from fastapi import APIRouter,Body
 from config.log_config import logger
 from modules.module_exam.dto.mp_user_dto import MpUserDTO
+from modules.module_exam.model.mp_user_model import MpUserModel
 from modules.module_exam.service.mp_user_service import MpUserService
-from modules.module_exam.controller.wx_controller import getOpenIdByWX
+from modules.module_exam.controller.wx_controller import get_wx_openid_by_code
 from utils.response_util import ResponseUtil
 from utils.jwt_util import JWTUtil
 
@@ -15,17 +16,16 @@ router = APIRouter(prefix='/mp/user', tags=['mp_user接口'])
 # 创建服务实例
 MpUserService_instance = MpUserService()
 
-
 """
 微信登录接口
-1.传入code，得到用户的openId和unionId
+1.传入code，得到微信用户的openId
 2.注册或登录用户
 """
-@router.post("/wxLogin")
-def wxLogin(code:str = Body(None),dto:MpUserDTO = Body(None)):
-        logger.info(f'/mp/user/wxLogin, code = {code}, dto = {dto}')
-        # 根据code获取openId和unionId
-        wxinfo = getOpenIdByWX(code)
+@router.post("/wxUserLogin")
+def wxUserLogin(code:str = Body(None,embed=True)):
+        logger.info(f'/mp/user/wxUserLogin, code = {code}')
+        # 根据code获取openId
+        wxinfo = get_wx_openid_by_code(code)
         if wxinfo is not None:
             openId = wxinfo.get("openid")
             unionId = wxinfo.get("unionid")
@@ -39,9 +39,9 @@ def wxLogin(code:str = Body(None),dto:MpUserDTO = Body(None)):
             newuser = MpUserDTO(
                 wx_openid=openId,
                 wx_unionid=unionId,
-                head_url=dto.head_url,
-                name=dto.name,
-                gender=dto.gender,
+                head_url=None,
+                name=None,
+                gender=None,
                 login_count=1,
                 last_login_time= datetime.now()
             )
@@ -49,6 +49,13 @@ def wxLogin(code:str = Body(None),dto:MpUserDTO = Body(None)):
             result = MpUserService_instance.add(data=newuser)
             if result is None:
                 return ResponseUtil.error(data={"message": "微信注册用户失败"})
+
+            # 获取user的id
+            userId = user.id
+            # 创建token,传入openId,userId生成token
+            token = JWTUtil.create_token({"openId": openId, "userId": userId})
+            # 返回响应数据
+            return ResponseUtil.success(data={"isFirstLogin": 1,"token": token,"userInfo":user})
 
         else:
             # 查询到用户，则登录用户
@@ -59,10 +66,12 @@ def wxLogin(code:str = Body(None),dto:MpUserDTO = Body(None)):
             if result is False:
                 return ResponseUtil.error(data={"message": "微信登录用户失败"})
 
-        # 创建token,传入openId,userId生成token
-        token = JWTUtil.create_token({"openId": openId,"userId":user.id})
-        # 返回响应数据
-        return ResponseUtil.success(data={"openId": openId,"userId":user.id,"token":token})
+            # 获取user的id
+            userId = user.id
+            # 创建token,传入openId,userId生成token
+            token = JWTUtil.create_token({"openId": openId,"userId":userId})
+            # 返回响应数据
+            return ResponseUtil.success(data={"isFirstLogin": 0,"token":token,"userInfo":user})
 
 """
 手机号注册接口

@@ -31,7 +31,7 @@ class MpUserExamService(BaseService[MpUserExamModel, MpUserExamDTO]):
 
     def find_last_one_finished_user_exam(self, user_id: int, exam_id: int) -> MpUserExamDTO:
         # 根据user_id 和 exam_id 查询用户最近完成的测试记录
-        # 使用session_execute_query方法，进行sqlalchemy的原生查询
+        # 使用session_execute_query方法，调用sqlalchemy的内置方法进行查询
         result: MpUserExamDTO = self.dao_instance.session_execute_query(
             lambda db_session: db_session.query(MpUserExamModel).filter(
                 MpUserExamModel.user_id == user_id,
@@ -43,13 +43,13 @@ class MpUserExamService(BaseService[MpUserExamModel, MpUserExamDTO]):
 
     def find_last_one_not_finished_user_exam(self, user_id: int, exam_id: int) -> MpUserExamDTO:
         # 根据user_id 和 exam_id 查询用户最近未完成的测试记录
-        # 使用session_execute_query方法，进行sqlalchemy的原生查询
+        # 使用session_execute_query方法，调用sqlalchemy的内置方法进行查询
         result: MpUserExamDTO = self.dao_instance.session_execute_query(
             lambda db_session: db_session.query(MpUserExamModel).filter(
                 MpUserExamModel.user_id == user_id,
                 MpUserExamModel.exam_id == exam_id,
-                MpUserExamModel.finish_time.isnot(None)
-            ).first()
+                MpUserExamModel.finish_time == None,
+            ).order_by(MpUserExamModel.id.desc()).first()
         )
         return result
 
