@@ -11,11 +11,10 @@ class MpQuestionModel(myBaseModel):
 
     id = Column("id",Integer, primary_key=True, autoincrement=True, comment='问题id')
     exam_id = Column("exam_id", Integer, nullable=False, comment='测试id')
-    name = Column("name",String(255),nullable=False, comment='问题名称')
-    type = Column("type",String(20),nullable=False, comment='问题类型')
-    type_id = Column("type_id", Integer, nullable=False, comment='问题类型id,1为单选，2为多选')
-    is_ban = Column("is_ban",Integer, default=0, comment='是否禁用 0正常 1停用')
-    status = Column("status",Integer, default=0, comment='测试状态 0正常 1停用')
+    name = Column("name",String(500),nullable=False, comment='问题名称')
+    type = Column("type",Integer,nullable=False, comment='问题类型 1为单选，2为多选 3为判断')
+    type_name = Column("type_name", String(20), nullable=False, comment='问题类型文本，对应type字段')
+    status = Column("status",Integer, default=0, comment='测试状态 0正常 -1禁用')
     create_time = Column("create_time",DateTime, comment='创建时间', default=func.now())
 
     # 添加索引

@@ -9,8 +9,7 @@ class MpOptionDTO(BaseModel):
     id:Optional[int] = None          # Optional[int] = None 表示类型可以是int,也可以是 None，默认值为 None
     question_id:Optional[int] = None
     content:Optional[str] = None
-    score:Optional[int] = None
-    is_ban:Optional[int] = None
+    is_right:Optional[int] = None
     status:Optional[int] = None
     create_time:Optional[datetime] = None
 

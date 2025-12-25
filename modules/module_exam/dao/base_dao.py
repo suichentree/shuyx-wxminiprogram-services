@@ -310,11 +310,16 @@ class BaseDao(Generic[ModelType, DtoType]):
         """
         with session_maker() as db_session:
             try:
-                print(query_func)
                 result = query_func(db_session)
                 # 当为查询操作时，此处不会有变更需要提交。其他操作时需要显式调用commit()方法提交事务
                 # 这里只是为了符合事务的完整性，避免后续操作受到影响
                 db_session.commit()
+
+                print(result)
+
+                # 处理JOIN查询结果（包含多个模型实例的元组）
+                if isinstance(result, list) and result and isinstance(result[0], tuple):
+                    return result  # 直接返回原始结果，由调用方处理
 
                 # 转换为DTO
                 # 处理列表类型结果

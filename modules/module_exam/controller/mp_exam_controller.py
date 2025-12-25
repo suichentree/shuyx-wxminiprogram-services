@@ -8,6 +8,7 @@ from modules.module_exam.dto.mp_question_dto import MpQuestionDTO
 from modules.module_exam.dto.mp_user_exam_dto import MpUserExamDTO
 from modules.module_exam.dto.mp_user_option_dto import MpUserOptionDTO
 from modules.module_exam.model.mp_option_model import MpOptionModel
+from modules.module_exam.model.mp_question_model import MpQuestionModel
 from modules.module_exam.model.mp_user_exam_model import MpUserExamModel
 from modules.module_exam.service.mp_exam_service import MpExamService
 from modules.module_exam.service.mp_option_service import MpOptionService
@@ -32,8 +33,8 @@ MpUserOptionService_instance = MpUserOptionService()
 @router.get("/getExamList")
 def getExamList(page_num:int=1, page_size:int=10):
     logger.info(f'/mp/exam/getExamList, page_num = {page_num}, page_size = {page_size}')
-    # 调用服务层方法，查询所有考试信息
-    result:List[MpExamDTO] = MpExamService_instance.get_page_list_by_filters(page_num=page_num, page_size=page_size)
+    # 分页查询，状态正常的考试信息
+    result:List[MpExamDTO] = MpExamService_instance.get_page_list_by_filters(page_num=page_num, page_size=page_size, filters=MpExamDTO(status=0))
     # 若result为空，则返回空列表。不为空则返回result
     return ResponseUtil.success(data=result if result is not None else [])
 
@@ -44,21 +45,37 @@ def getExamList(page_num:int=1, page_size:int=10):
 def getQuestionList(exam_id:int = Body(None,embed=True)):
     logger.info(f'/mp/exam/getQuestionList, exam_id = {exam_id}')
 
-    # 根据examid去查询对应题目
-    questionlist:List[MpQuestionDTO] = MpQuestionService_instance.get_list_by_filters(filters=MpQuestionDTO(exam_id=exam_id))
+    # 调用自定义方法获取问题和选项数据
+    question_list = MpQuestionService_instance.get_questions_with_options(exam_id)
+
+    return ResponseUtil.success(data=question_list)
+
+
+
+"""
+获取测试题目列表信息
+"""
+
+
+@router.post("/getQuestionList2")
+def getQuestionList2(exam_id: int = Body(None, embed=True)):
+    logger.info(f'/mp/exam/getQuestionList2, exam_id = {exam_id}')
+
+    # 根据examid去查询所属测试的状态正常的题目
+    questionlist: List[MpQuestionDTO] = MpQuestionService_instance.get_list_by_filters(filters=MpQuestionDTO(exam_id=exam_id, status=0))
 
     jsonArray = []
     # 遍历题目列表，查询每个题目对应的选项
     for question in questionlist:
         jsonobj = {
-            "questionId": question.id,
+            "id": question.id,
             "examId": question.exam_id,
-            "questionType": question.type,
             "name": question.name,
+            "type": question.type,
         }
 
         # 查询选项列表
-        optionList:List[MpOptionDTO] = MpOptionService_instance.get_list_by_filters(filters=MpOptionDTO(question_id=question.id))
+        optionList: List[MpOptionDTO] = MpOptionService_instance.get_list_by_filters(filters=MpOptionDTO(question_id=question.id))
         jsonArray2 = []
         for option in optionList:
             jsonArray2.append({
