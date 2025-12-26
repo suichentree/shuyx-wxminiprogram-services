@@ -2,7 +2,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
-from starlette.middleware.gzip import GZipMiddleware
 
 # 创建FastAPI应用实例
 app = FastAPI(
@@ -12,15 +11,11 @@ app = FastAPI(
 )
 
 # 全局异常处理中间件
-from middlewares.exception_middleware import ExceptionMiddleware
 # app.middleware("http")(ExceptionMiddleware)
 # 认证中间件
-from middlewares.auth_middleware import AuthMiddleware
 # app.middleware("http")(AuthMiddleware)
 # 日志中间件
-from middlewares.logger_middleware import LoggerMiddleware
 # app.middleware("http")(LoggerMiddleware)
-
 # 添加 GZip 中间件，压缩大于 2000 字节的响应
 # app.add_middleware(GZipMiddleware, minimum_size=2000)
 
@@ -33,13 +28,10 @@ app.add_middleware(
     allow_headers=["*"],  # 允许所有请求头
 )
 
-
-
-
 # 导入控制器路由
-from modules.module_exam.controller.mp_user_controller import router as mp_user_router
-from modules.module_exam.controller.mp_exam_controller import router as mp_exam_router
-from modules.module_exam.controller.wx_controller import router as wx_router
+from modules.module_test.controller.mp_user_controller import router as mp_user_router
+from modules.module_test.controller.mp_exam_controller import router as mp_exam_router
+from modules.module_test.controller.wx_controller import router as wx_router
 # 通过include_router函数，把各个路由实例加入到FastAPI应用实例中,进行统一管理
 app.include_router(mp_user_router)
 app.include_router(mp_exam_router)

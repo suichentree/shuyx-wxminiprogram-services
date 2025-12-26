@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Dict, Any, Optional
+from typing import List, Optional
 from fastapi import APIRouter,Body
 from config.log_config import logger
 from modules.module_exam.dto.mp_exam_dto import MpExamDTO
@@ -8,14 +8,12 @@ from modules.module_exam.dto.mp_question_dto import MpQuestionDTO
 from modules.module_exam.dto.mp_user_exam_dto import MpUserExamDTO
 from modules.module_exam.dto.mp_user_option_dto import MpUserOptionDTO
 from modules.module_exam.model.mp_option_model import MpOptionModel
-from modules.module_exam.model.mp_question_model import MpQuestionModel
 from modules.module_exam.model.mp_user_exam_model import MpUserExamModel
 from modules.module_exam.service.mp_exam_service import MpExamService
 from modules.module_exam.service.mp_option_service import MpOptionService
 from modules.module_exam.service.mp_question_service import MpQuestionService
 from modules.module_exam.service.mp_user_exam_service import MpUserExamService
 from modules.module_exam.service.mp_user_option_service import MpUserOptionService
-from modules.module_exam.service.base_service import BaseService
 from utils.response_util import ResponseUtil
 
 # 创建路由实例

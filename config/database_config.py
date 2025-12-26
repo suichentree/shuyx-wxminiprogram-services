@@ -16,7 +16,7 @@ myEngine = create_engine(MYSQL_DATABASE_URL,
     echo=False              # 是否在控制台打印相关语句等
     )
 
-# 创建统一基类
+# 创建统一数据库模型基类
 class myBaseModel(DeclarativeBase):
     pass
 
@@ -28,6 +28,21 @@ mySession = sessionmaker(autocommit=False, autoflush=False, bind=myEngine, expir
 @contextmanager
 def session_maker():
     session = mySession()  # 每次都创建新的会话对象
+    try:
+        yield session
+        session.commit()
+    except:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
+# 使用上下文模块，封装session,实现session的自动提交，自动回滚，自动关闭
+# 该函数用于创建新的会话对象，确保每个请求都有独立的会话。从而避免了并发访问同一个会话对象导致的事务冲突
+@contextmanager
+def get_db_session():
+    session = mySession()  # 每次都创建新的会话session对象
     try:
         yield session
         session.commit()

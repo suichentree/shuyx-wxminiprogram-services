@@ -1,10 +1,8 @@
 from datetime import datetime
-from typing import Annotated, Optional
 
 from fastapi import APIRouter,Body
 from config.log_config import logger
 from modules.module_exam.dto.mp_user_dto import MpUserDTO
-from modules.module_exam.model.mp_user_model import MpUserModel
 from modules.module_exam.service.mp_user_service import MpUserService
 from modules.module_exam.controller.wx_controller import get_wx_openid_by_code
 from utils.response_util import ResponseUtil
